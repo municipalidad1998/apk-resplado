@@ -18,9 +18,14 @@
     <style name="TabButton" parent="Widget.MaterialComponents.Button.OutlinedButton">
         <item name="android:textColor">@color/text_primary</item>
         <item name="android:background">@drawable/tab_selector</item>
-        <item name="android:paddingStart">16dp</item>
-        <item name="android:paddingEnd">16dp</item>
-        <item name="android:textSize">13sp</item>
+        <item name="android:paddingStart">10dp</item>
+        <item name="android:paddingEnd">10dp</item>
+        <item name="android:textSize">12sp</item>
         <item name="strokeColor">@color/transparent</item>
+    </style>
+    <style name="DarkDialog" parent="Theme.AppCompat.Dialog.Alert">
+        <item name="android:windowBackground">@drawable/dialog_bg</item>
+        <item name="colorAccent">@color/accent_blue</item>
+        <item name="android:textColor">@color/text_primary</item>
     </style>
 </resources>

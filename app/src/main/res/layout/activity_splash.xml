@@ -1,19 +1,68 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent" android:layout_height="match_parent"
-    android:background="@color/bg_dark">
-    <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content"
-        android:layout_gravity="center" android:orientation="vertical" android:gravity="center">
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="▶" android:textSize="64sp" android:textColor="#0066FF"/>
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="StreamVault" android:textColor="#FFFFFF"
-            android:textSize="32sp" android:textStyle="bold" android:layout_marginTop="8dp"/>
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="Tu contenido, sin límites" android:textColor="#8888AA"
-            android:textSize="14sp" android:layout_marginTop="4dp"/>
+    android:background="#050510">
+
+    <!-- Fondo gradiente -->
+    <View android:layout_width="match_parent" android:layout_height="match_parent"
+        android:background="@drawable/splash_bg"/>
+
+    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent"
+        android:orientation="vertical" android:gravity="center"
+        android:paddingStart="40dp" android:paddingEnd="40dp">
+
+        <!-- Logo play -->
+        <FrameLayout android:layout_width="110dp" android:layout_height="110dp"
+            android:layout_gravity="center">
+            <View android:layout_width="110dp" android:layout_height="110dp"
+                android:background="@drawable/logo_circle_bg"/>
+            <TextView android:layout_width="match_parent" android:layout_height="match_parent"
+                android:text="▶" android:textSize="52sp" android:textColor="#FFFFFF"
+                android:gravity="center" android:paddingStart="8dp"/>
+        </FrameLayout>
+
+        <android.widget.ImageView android:id="@+id/ivLogo"
+            android:layout_width="0dp" android:layout_height="0dp"/>
+
+        <TextView android:id="@+id/tvAppName"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="IPTV Player"
+            android:textColor="#FFFFFF" android:textSize="36sp" android:textStyle="bold"
+            android:letterSpacing="0.05"
+            android:layout_marginTop="20dp" android:translationY="20dp"/>
+
+        <TextView android:id="@+id/tvSubtitle"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="REPRODUCTOR"
+            android:textColor="#0066FF" android:textSize="13sp" android:textStyle="bold"
+            android:letterSpacing="0.3" android:layout_marginTop="2dp"/>
+
+        <View android:layout_width="60dp" android:layout_height="2dp"
+            android:background="#0066FF" android:layout_marginTop="16dp"/>
+
+        <TextView android:id="@+id/tvAuthor"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="by Denilson"
+            android:textColor="#8888AA" android:textSize="14sp"
+            android:layout_marginTop="12dp"/>
+
+        <TextView android:id="@+id/tvWelcome"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="Bienvenido"
+            android:textColor="#AAAACC" android:textSize="16sp"
+            android:layout_marginTop="40dp"/>
+
+        <ProgressBar android:id="@+id/progressSplash"
+            android:layout_width="120dp" android:layout_height="3dp"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:indeterminate="true"
+            android:indeterminateTint="#0066FF"
+            android:layout_marginTop="16dp"/>
     </LinearLayout>
-    <ProgressBar android:layout_width="120dp" android:layout_height="3dp"
-        android:layout_gravity="bottom|center_horizontal" android:layout_marginBottom="60dp"
-        android:indeterminateTint="#0066FF" android:progressTint="#0066FF"/>
+
+    <!-- Versión abajo -->
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="32dp"
+        android:text="v1.0" android:textColor="#444466" android:textSize="12sp"/>
 </FrameLayout>
