@@ -18,23 +18,20 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     val series = MutableLiveData<List<Series>>(emptyList())
     val sources = MutableLiveData<List<SavedSource>>(emptyList())
     val categories = MutableLiveData<List<String>>(emptyList())
-    val selectedCategory = MutableLiveData<String?>(null)
     val loading = MutableLiveData(false)
-    val loadingText = MutableLiveData("Cargando...")
+    val loadingProgress = MutableLiveData(0) // 0-100
+    val loadingText = MutableLiveData("")
     val error = MutableLiveData<String?>()
     val toast = MutableLiveData<String?>()
 
     private var allChannels = listOf<Channel>()
+    private var currentCategory: String? = null
 
     fun refresh() {
         val srcs = repo.getSources()
         sources.value = srcs
         if (srcs.isEmpty()) {
-            channels.value = emptyList()
-            movies.value = emptyList()
-            series.value = emptyList()
-            categories.value = emptyList()
-            return
+            reset(); return
         }
         loadAll(srcs)
     }
@@ -46,56 +43,71 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun filterByCategory(cat: String?) {
-        selectedCategory.value = cat
+        currentCategory = cat
         channels.value = if (cat == null) allChannels
-        else allChannels.filter { (it.group ?: "GENERAL").equals(cat, ignoreCase = true) }
+        else allChannels.filter { (it.group ?: "").equals(cat, ignoreCase = true) }
+    }
+
+    private fun reset() {
+        allChannels = emptyList()
+        channels.value = emptyList()
+        movies.value = emptyList()
+        series.value = emptyList()
+        categories.value = emptyList()
     }
 
     private fun loadAll(srcs: List<SavedSource>) {
         viewModelScope.launch {
             loading.value = true
+            loadingProgress.value = 0
             error.value = null
-            allChannels = emptyList()
-            channels.value = emptyList()
+            reset()
 
-            try {
-                val allCh = mutableListOf<Channel>()
-                val allMv = mutableListOf<Movie>()
-                val allSr = mutableListOf<Series>()
-
-                srcs.forEachIndexed { idx, src ->
-                    loadingText.value = "Cargando fuente ${idx+1}/${srcs.size}: ${src.name}..."
-                    try {
-                        val ch = withContext(Dispatchers.IO) { repo.loadChannels(src) }
-                        val mv = withContext(Dispatchers.IO) { repo.loadMovies(src) }
-                        val sr = withContext(Dispatchers.IO) { repo.loadSeries(src) }
-                        allCh.addAll(ch)
-                        allMv.addAll(mv)
-                        allSr.addAll(sr)
-                        // Mostrar canales inmediatamente al tenerlos
-                        if (allCh.isNotEmpty()) {
-                            allChannels = allCh.toList()
-                            channels.value = allChannels
-                            // Construir categorías
-                            val cats = allCh
-                                .mapNotNull { it.group?.trim() }
-                                .filter { it.isNotEmpty() }
-                                .distinct()
-                                .sorted()
-                            categories.value = cats
-                        }
-                    } catch (e: Exception) {
-                        error.value = "Error en '${src.name}': ${e.message}"
+            val total = srcs.size
+            srcs.forEachIndexed { idx, src ->
+                loadingText.value = "Descargando lista${if (total > 1) " ${idx+1}/$total" else ""}..."
+                try {
+                    // Cargar canales primero (más importante)
+                    val ch = withContext(Dispatchers.IO) { repo.loadChannels(src) }
+                    if (ch.isNotEmpty()) {
+                        allChannels = allChannels + ch
+                        // Aplicar filtro actual si hay uno
+                        channels.value = if (currentCategory == null) allChannels
+                            else allChannels.filter { (it.group ?: "").equals(currentCategory, ignoreCase = true) }
+                        // Actualizar categorías
+                        val cats = allChannels
+                            .mapNotNull { it.group?.trim() }
+                            .filter { it.isNotEmpty() }
+                            .distinct()
+                            .sorted()
+                        categories.value = cats
+                        loadingText.value = "${allChannels.size} canales cargados"
                     }
-                }
-                movies.value = allMv
-                series.value = allSr
+                    loadingProgress.value = ((idx + 1) * 70 / total)
 
-            } catch (e: Exception) {
-                error.value = "Error general: ${e.message}"
+                    // Cargar películas y series en paralelo
+                    val mvJob = async(Dispatchers.IO) { repo.loadMovies(src) }
+                    val srJob = async(Dispatchers.IO) { repo.loadSeries(src) }
+                    val mv = mvJob.await()
+                    val sr = srJob.await()
+                    if (mv.isNotEmpty()) movies.value = (movies.value ?: emptyList()) + mv
+                    if (sr.isNotEmpty()) series.value = (series.value ?: emptyList()) + sr
+                    loadingProgress.value = ((idx + 1) * 100 / total)
+
+                } catch (e: Exception) {
+                    val msg = when {
+                        e.message?.contains("abort") == true -> "Conexión interrumpida. Reintentando..."
+                        e.message?.contains("timeout") == true -> "Tiempo agotado descargando lista"
+                        else -> "Error: ${e.message}"
+                    }
+                    error.value = msg
+                }
             }
             loading.value = false
-            loadingText.value = "Cargando..."
+            loadingText.value = ""
+            if (allChannels.isEmpty()) {
+                error.value = "No se cargaron canales. Desliza hacia abajo para reintentar."
+            }
         }
     }
 }
