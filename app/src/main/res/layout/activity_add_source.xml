@@ -3,16 +3,18 @@
     android:layout_width="match_parent" android:layout_height="match_parent"
     android:background="@color/bg_dark" android:orientation="vertical">
 
+    <!-- Header -->
     <LinearLayout android:layout_width="match_parent" android:layout_height="56dp"
         android:gravity="center_vertical" android:paddingStart="8dp" android:paddingEnd="16dp">
         <ImageButton android:id="@+id/btnBack" android:layout_width="48dp" android:layout_height="48dp"
             android:background="@android:color/transparent"
             android:src="@android:drawable/ic_media_previous" android:tint="@color/text_primary"/>
         <TextView android:layout_width="0dp" android:layout_height="wrap_content"
-            android:layout_weight="1" android:text="Agregar Fuente"
+            android:layout_weight="1" android:text="Mis Fuentes"
             android:textColor="@color/text_primary" android:textSize="20sp" android:textStyle="bold"/>
     </LinearLayout>
 
+    <!-- Tabs -->
     <LinearLayout android:layout_width="match_parent" android:layout_height="44dp"
         android:orientation="horizontal" android:paddingStart="16dp" android:paddingEnd="16dp">
         <Button android:id="@+id/tabM3uUrl" style="@style/TabButton"
@@ -26,7 +28,8 @@
             android:text="Archivo"/>
     </LinearLayout>
 
-    <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
+    <ScrollView android:id="@+id/scrollView"
+        android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
             android:orientation="vertical" android:padding="16dp">
 
@@ -40,7 +43,7 @@
                     android:layout_height="48dp" android:background="@drawable/input_bg"
                     android:hint="Ej: Mi IPTV" android:textColor="@color/text_primary"
                     android:paddingStart="14dp" android:paddingEnd="14dp"
-                    android:layout_marginBottom="12dp" android:inputType="text"/>
+                    android:layout_marginBottom="10dp" android:inputType="text"/>
                 <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
                     android:text="URL de la lista M3U" android:textColor="@color/text_secondary"
                     android:textSize="13sp" android:layout_marginBottom="4dp"/>
@@ -48,7 +51,7 @@
                     android:layout_height="48dp" android:background="@drawable/input_bg"
                     android:hint="http://..." android:textColor="@color/text_primary"
                     android:paddingStart="14dp" android:paddingEnd="14dp"
-                    android:inputType="textUri" android:layout_marginBottom="16dp"/>
+                    android:inputType="textUri" android:layout_marginBottom="14dp"/>
                 <Button android:id="@+id/btnAddM3u" android:layout_width="match_parent"
                     android:layout_height="48dp" android:background="@drawable/btn_primary"
                     android:text="AGREGAR LISTA M3U" android:textColor="#FFFFFF" android:textStyle="bold"/>
@@ -64,7 +67,7 @@
                     android:layout_height="48dp" android:background="@drawable/input_bg"
                     android:hint="Mi servidor" android:textColor="@color/text_primary"
                     android:paddingStart="14dp" android:paddingEnd="14dp"
-                    android:layout_marginBottom="10dp" android:inputType="text"/>
+                    android:layout_marginBottom="8dp" android:inputType="text"/>
                 <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
                     android:text="URL del servidor" android:textColor="@color/text_secondary"
                     android:textSize="13sp" android:layout_marginBottom="4dp"/>
@@ -72,7 +75,7 @@
                     android:layout_height="48dp" android:background="@drawable/input_bg"
                     android:hint="http://servidor:puerto" android:textColor="@color/text_primary"
                     android:paddingStart="14dp" android:paddingEnd="14dp"
-                    android:inputType="textUri" android:layout_marginBottom="10dp"/>
+                    android:inputType="textUri" android:layout_marginBottom="8dp"/>
                 <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
                     android:text="Usuario" android:textColor="@color/text_secondary"
                     android:textSize="13sp" android:layout_marginBottom="4dp"/>
@@ -80,7 +83,7 @@
                     android:layout_height="48dp" android:background="@drawable/input_bg"
                     android:hint="username" android:textColor="@color/text_primary"
                     android:paddingStart="14dp" android:paddingEnd="14dp"
-                    android:layout_marginBottom="10dp" android:inputType="text"/>
+                    android:layout_marginBottom="8dp" android:inputType="text"/>
                 <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
                     android:text="Contrasena" android:textColor="@color/text_secondary"
                     android:textSize="13sp" android:layout_marginBottom="4dp"/>
@@ -88,7 +91,7 @@
                     android:layout_height="48dp" android:background="@drawable/input_bg"
                     android:hint="password" android:textColor="@color/text_primary"
                     android:paddingStart="14dp" android:paddingEnd="14dp"
-                    android:inputType="textPassword" android:layout_marginBottom="16dp"/>
+                    android:inputType="textPassword" android:layout_marginBottom="14dp"/>
                 <Button android:id="@+id/btnAddXtream" android:layout_width="match_parent"
                     android:layout_height="48dp" android:background="@drawable/btn_primary"
                     android:text="AGREGAR XTREAM CODES" android:textColor="#FFFFFF" android:textStyle="bold"/>
@@ -104,22 +107,27 @@
                     android:layout_height="48dp" android:background="@drawable/input_bg"
                     android:hint="Mi lista local" android:textColor="@color/text_primary"
                     android:paddingStart="14dp" android:paddingEnd="14dp"
-                    android:layout_marginBottom="16dp" android:inputType="text"/>
+                    android:layout_marginBottom="14dp" android:inputType="text"/>
                 <Button android:id="@+id/btnPickFile" android:layout_width="match_parent"
                     android:layout_height="48dp" android:background="@drawable/btn_secondary"
                     android:text="SELECCIONAR ARCHIVO .M3U"
                     android:textColor="@color/accent_cyan" android:textStyle="bold"/>
             </LinearLayout>
 
+            <!-- Divider -->
             <View android:layout_width="match_parent" android:layout_height="1dp"
                 android:background="@color/bg_surface"
                 android:layout_marginTop="20dp" android:layout_marginBottom="12dp"/>
+
+            <!-- Fuentes guardadas - lista dinámica -->
             <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:text="Fuentes guardadas:" android:textColor="@color/text_secondary"
-                android:textSize="13sp" android:layout_marginBottom="8dp"/>
-            <TextView android:id="@+id/tvSourcesList" android:layout_width="match_parent"
-                android:layout_height="wrap_content" android:textColor="@color/text_primary"
-                android:textSize="14sp" android:lineSpacingExtra="6dp"/>
+                android:text="Fuentes guardadas" android:textColor="@color/text_primary"
+                android:textSize="15sp" android:textStyle="bold" android:layout_marginBottom="8dp"/>
+
+            <LinearLayout android:id="@+id/sourcesContainer"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="vertical"/>
+
         </LinearLayout>
     </ScrollView>
 </LinearLayout>
