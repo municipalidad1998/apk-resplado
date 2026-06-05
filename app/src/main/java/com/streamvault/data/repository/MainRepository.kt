@@ -5,6 +5,7 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.streamvault.data.model.*
 import com.streamvault.util.M3UParser
+import com.streamvault.util.ParsedContent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -15,17 +16,15 @@ class MainRepository(private val prefs: SharedPreferences) {
     private val gson = Gson()
     private val xtream = XtreamRepository()
 
-    // Timeout generoso para listas M3U grandes (hasta 50MB)
     private val client = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(300, TimeUnit.SECONDS)   // 5 minutos para listas enormes
-        .writeTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(300, TimeUnit.SECONDS)
         .retryOnConnectionFailure(true)
         .build()
 
     fun getSources(): List<SavedSource> {
-        val json = prefs.getString("sources", "[]") ?: "[]"
         return try {
+            val json = prefs.getString("sources", "[]") ?: "[]"
             gson.fromJson(json, object : TypeToken<List<SavedSource>>() {}.type) ?: emptyList()
         } catch (e: Exception) { emptyList() }
     }
@@ -41,46 +40,37 @@ class MainRepository(private val prefs: SharedPreferences) {
         prefs.edit().putString("sources", gson.toJson(getSources().filter { it.id != id })).apply()
     }
 
-    suspend fun loadChannels(source: SavedSource): List<Channel> = withContext(Dispatchers.IO) {
+    // Carga todo separado (canales, películas, series) desde M3U
+    suspend fun loadAll(source: SavedSource): ParsedContent = withContext(Dispatchers.IO) {
         when (source.type) {
             "M3U_URL" -> {
-                val url = source.m3uUrl ?: return@withContext emptyList()
+                val url = source.m3uUrl ?: return@withContext ParsedContent(emptyList(), emptyList(), emptyList())
                 val content = fetchWithRetry(url)
-                if (content.isBlank()) return@withContext emptyList()
-                M3UParser.parse(content, source.id)
-            }
-            "M3U_FILE" -> {
-                // leer archivo local
-                emptyList()
+                if (content.isBlank()) return@withContext ParsedContent(emptyList(), emptyList(), emptyList())
+                M3UParser.parseAll(content, source.id)
             }
             "XTREAM" -> {
-                xtream.getLiveChannels(
-                    source.xtreamUrl ?: "", source.xtreamUser ?: "",
-                    source.xtreamPass ?: "", source.id
-                )
+                val base = source.xtreamUrl ?: ""
+                val user = source.xtreamUser ?: ""
+                val pass = source.xtreamPass ?: ""
+                val ch = xtream.getLiveChannels(base, user, pass, source.id)
+                val mv = xtream.getMovies(base, user, pass, source.id)
+                val sr = xtream.getSeries(base, user, pass, source.id)
+                ParsedContent(ch, mv, sr)
             }
-            else -> emptyList()
+            else -> ParsedContent(emptyList(), emptyList(), emptyList())
         }
     }
 
-    suspend fun loadMovies(source: SavedSource): List<Movie> = withContext(Dispatchers.IO) {
-        if (source.type != "XTREAM") return@withContext emptyList()
-        xtream.getMovies(source.xtreamUrl ?: "", source.xtreamUser ?: "", source.xtreamPass ?: "", source.id)
-    }
-
-    suspend fun loadSeries(source: SavedSource): List<Series> = withContext(Dispatchers.IO) {
-        if (source.type != "XTREAM") return@withContext emptyList()
-        xtream.getSeries(source.xtreamUrl ?: "", source.xtreamUser ?: "", source.xtreamPass ?: "", source.id)
-    }
+    // Mantener métodos separados para compatibilidad con PlayerActivity
+    suspend fun loadChannels(source: SavedSource): List<Channel> = loadAll(source).channels
 
     private fun fetchWithRetry(url: String, retries: Int = 3): String {
         var lastError: Exception? = null
         repeat(retries) { attempt ->
             try {
-                val req = Request.Builder()
-                    .url(url)
-                    .addHeader("User-Agent", "StreamVault/1.0")
-                    .build()
+                val req = Request.Builder().url(url)
+                    .addHeader("User-Agent", "StreamVault/1.0").build()
                 val body = client.newCall(req).execute().use { resp ->
                     if (!resp.isSuccessful) throw Exception("HTTP ${resp.code}")
                     resp.body?.string() ?: ""
@@ -91,6 +81,6 @@ class MainRepository(private val prefs: SharedPreferences) {
                 if (attempt < retries - 1) Thread.sleep(2000)
             }
         }
-        throw lastError ?: Exception("No se pudo descargar la lista")
+        throw lastError ?: Exception("No se pudo descargar")
     }
 }

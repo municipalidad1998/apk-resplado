@@ -24,18 +24,18 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     val error       = MutableLiveData<String?>()
     val toast       = MutableLiveData<String?>()
 
-    private var allChannels   = listOf<Channel>()
+    private var allChannels = listOf<Channel>()
+    private var allMovies   = listOf<Movie>()
+    private var allSeries   = listOf<Series>()
     private var currentCategory: String? = null
 
     fun refresh(forceReload: Boolean = false) {
         val srcs = repo.getSources()
         sources.value = srcs
         if (srcs.isEmpty()) { reset(); return }
-
-        // Si ya tenemos datos en cache y no se fuerza recarga, usar cache
         if (!forceReload && ChannelCache.isLoaded()) {
             allChannels = ChannelCache.get()
-            channels.value = allChannels
+            channels.value = applyFilter(allChannels)
             buildCategories(allChannels)
             return
         }
@@ -45,91 +45,75 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     fun deleteSource(id: String) {
         repo.deleteSource(id)
         ChannelCache.clear()
-        toast.value = "Fuente eliminada"
         refresh(forceReload = true)
     }
 
     fun filterByCategory(cat: String?) {
         currentCategory = cat
-        channels.value = if (cat == null) allChannels
-        else allChannels.filter { it.group.equals(cat, ignoreCase = true) }
+        channels.value = applyFilter(allChannels)
     }
 
+    private fun applyFilter(list: List<Channel>): List<Channel> =
+        if (currentCategory == null) list
+        else list.filter { it.group.equals(currentCategory, ignoreCase = true) }
+
     private fun reset() {
-        allChannels = emptyList()
-        channels.value = emptyList()
-        movies.value = emptyList()
-        series.value = emptyList()
-        categories.value = emptyList()
-        ChannelCache.clear()
+        allChannels = emptyList(); allMovies = emptyList(); allSeries = emptyList()
+        channels.value = emptyList(); movies.value = emptyList(); series.value = emptyList()
+        categories.value = emptyList(); ChannelCache.clear()
     }
 
     private fun buildCategories(list: List<Channel>) {
-        val cats = list
+        categories.value = list
             .mapNotNull { it.group?.trim() }
             .filter { it.isNotEmpty() }
             .groupBy { it }
-            .entries
-            .sortedByDescending { it.value.size } // más canales primero
+            .entries.sortedByDescending { it.value.size }
             .map { it.key }
-        categories.value = cats
     }
 
     private fun loadAll(srcs: List<SavedSource>) {
         viewModelScope.launch {
             loading.value = true
-            loadingText.value = "Descargando lista..."
             error.value = null
-            allChannels = emptyList()
-            channels.value = emptyList()
-
-            val allCh = mutableListOf<Channel>()
-            val allMv = mutableListOf<Movie>()
-            val allSr = mutableListOf<Series>()
+            val chList = mutableListOf<Channel>()
+            val mvList = mutableListOf<Movie>()
+            val srList = mutableListOf<Series>()
 
             srcs.forEachIndexed { idx, src ->
-                val label = if (srcs.size > 1) "${idx+1}/${srcs.size}: " else ""
-                loadingText.value = "Cargando ${label}${src.name}..."
+                val label = if (srcs.size > 1) " ${idx+1}/${srcs.size}" else ""
+                loadingText.value = "Descargando${label}: ${src.name}..."
                 try {
-                    val ch = withContext(Dispatchers.IO) { repo.loadChannels(src) }
-                    allCh.addAll(ch)
-                    // Mostrar inmediatamente
-                    if (allCh.isNotEmpty()) {
-                        allChannels = allCh.toList()
-                        ChannelCache.set(allChannels) // guardar en cache
-                        val filtered = if (currentCategory == null) allChannels
-                            else allChannels.filter { it.group.equals(currentCategory, true) }
-                        channels.value = filtered
-                        buildCategories(allChannels)
-                        loadingText.value = "${allChannels.size} canales"
-                    }
-                    // Películas/Series solo de Xtream
-                    if (src.type == "XTREAM") {
-                        val mv = withContext(Dispatchers.IO) { repo.loadMovies(src) }
-                        val sr = withContext(Dispatchers.IO) { repo.loadSeries(src) }
-                        allMv.addAll(mv)
-                        allSr.addAll(sr)
-                    }
+                    val result = withContext(Dispatchers.IO) { repo.loadAll(src) }
+                    chList.addAll(result.channels)
+                    mvList.addAll(result.movies)
+                    srList.addAll(result.series)
+
+                    // Actualizar UI inmediatamente
+                    allChannels = chList.toList()
+                    allMovies   = mvList.toList()
+                    allSeries   = srList.toList()
+                    ChannelCache.set(allChannels)
+
+                    channels.value = applyFilter(allChannels)
+                    movies.value   = allMovies
+                    series.value   = allSeries
+                    buildCategories(allChannels)
+
+                    val total = chList.size + mvList.size + srList.size
+                    loadingText.value = "✓ ${chList.size} canales · ${mvList.size} películas · ${srList.size} series"
                 } catch (e: Exception) {
-                    val msg = when {
-                        e.message?.contains("abort",true) == true ||
-                        e.message?.contains("reset",true) == true ->
-                            "Conexión interrumpida. Desliza para reintentar."
-                        e.message?.contains("timeout",true) == true ->
-                            "Tiempo agotado. Verifica tu conexión."
-                        else -> "Error: ${e.message?.take(80)}"
+                    error.value = when {
+                        e.message?.contains("abort", true) == true -> "Conexión interrumpida. Desliza para reintentar."
+                        e.message?.contains("timeout", true) == true -> "Tiempo agotado."
+                        else -> "Error: ${e.message?.take(60)}"
                     }
-                    error.value = msg
                 }
             }
-
-            movies.value = allMv
-            series.value = allSr
             loading.value = false
-            loadingText.value = ""
-
-            if (allChannels.isEmpty()) {
-                error.value = "No se cargaron canales.\nDesliza hacia abajo para reintentar."
+            if (allChannels.isEmpty() && allMovies.isEmpty()) {
+                loadingText.value = ""
+                error.value = "Sin contenido. Verifica tu URL o conexión."
             }
         }
     }
