@@ -6,13 +6,12 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.view.*
+import android.app.AlertDialog
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.media3.common.*
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.*
-import androidx.media3.exoplayer.hls.HlsMediaSource
-import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.ui.PlayerView
 import androidx.recyclerview.widget.*
@@ -168,7 +167,7 @@ class PlayerActivity : AppCompatActivity() {
         val items = arrayOf("Auto (recomendado)", "1080p", "720p", "480p", "360p", "Solo audio")
         AlertDialog.Builder(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen)
             .setTitle("Calidad de video")
-            .setItems(items) { _, which ->
+            .setItems(items) { _: android.content.DialogInterface, which: Int ->
                 val override = ts.buildUponParameters()
                 when (which) {
                     0 -> override.clearVideoSizeConstraints()
