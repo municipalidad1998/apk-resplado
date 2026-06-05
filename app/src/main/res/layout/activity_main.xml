@@ -6,7 +6,6 @@
     android:layout_height="match_parent"
     android:background="@color/bg_dark">
 
-    <!-- Header -->
     <LinearLayout
         android:id="@+id/header"
         android:layout_width="match_parent"
@@ -26,7 +25,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Stream\u200BVault"
+                android:text="StreamVault"
                 android:textColor="@color/text_primary"
                 android:textSize="24sp"
                 android:textStyle="bold"/>
@@ -57,7 +56,6 @@
                 android:tint="@color/accent_cyan"/>
         </LinearLayout>
 
-        <!-- Search bar -->
         <EditText
             android:id="@+id/searchBar"
             android:layout_width="match_parent"
@@ -66,8 +64,7 @@
             android:layout_marginEnd="16dp"
             android:layout_marginBottom="8dp"
             android:background="@drawable/search_bg"
-            android:hint="Buscar canal, película, serie..."
-            android:hintTextColor="@color/text_muted"
+            android:hint="Buscar canal, pelicula, serie..."
             android:textColor="@color/text_primary"
             android:paddingStart="16dp"
             android:paddingEnd="16dp"
@@ -76,7 +73,6 @@
             android:imeOptions="actionSearch"
             android:singleLine="true"/>
 
-        <!-- Tabs -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="48dp"
@@ -85,36 +81,22 @@
             android:paddingEnd="16dp"
             android:paddingBottom="4dp">
 
-            <Button
-                android:id="@+id/btnLive"
-                style="@style/TabButton"
-                android:layout_width="0dp"
-                android:layout_height="38dp"
-                android:layout_weight="1"
-                android:layout_marginEnd="6dp"
-                android:selected="true"
-                android:text="📺 En Vivo"/>
+            <Button android:id="@+id/btnLive" style="@style/TabButton"
+                android:layout_width="0dp" android:layout_height="38dp"
+                android:layout_weight="1" android:layout_marginEnd="6dp"
+                android:selected="true" android:text="En Vivo"/>
 
-            <Button
-                android:id="@+id/btnMovies"
-                style="@style/TabButton"
-                android:layout_width="0dp"
-                android:layout_height="38dp"
-                android:layout_weight="1"
-                android:layout_marginEnd="6dp"
-                android:text="🎬 Películas"/>
+            <Button android:id="@+id/btnMovies" style="@style/TabButton"
+                android:layout_width="0dp" android:layout_height="38dp"
+                android:layout_weight="1" android:layout_marginEnd="6dp"
+                android:text="Peliculas"/>
 
-            <Button
-                android:id="@+id/btnSeries"
-                style="@style/TabButton"
-                android:layout_width="0dp"
-                android:layout_height="38dp"
-                android:layout_weight="1"
-                android:text="📺 Series"/>
+            <Button android:id="@+id/btnSeries" style="@style/TabButton"
+                android:layout_width="0dp" android:layout_height="38dp"
+                android:layout_weight="1" android:text="Series"/>
         </LinearLayout>
     </LinearLayout>
 
-    <!-- Content -->
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
         android:id="@+id/swipeRefresh"
         android:layout_width="match_parent"
@@ -122,9 +104,7 @@
         app:layout_behavior="@string/appbar_scrolling_view_behavior"
         android:layout_marginTop="140dp">
 
-        <FrameLayout
-            android:layout_width="match_parent"
-            android:layout_height="match_parent">
+        <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent">
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/recycler"
@@ -148,7 +128,7 @@
                 android:layout_gravity="center"
                 android:gravity="center"
                 android:padding="32dp"
-                android:text="Sin contenido.\nAgrega una fuente con el botón +"
+                android:text="Sin contenido.\nAgrega una fuente con el boton +"
                 android:textColor="@color/text_secondary"
                 android:textSize="15sp"
                 android:visibility="gone"/>
