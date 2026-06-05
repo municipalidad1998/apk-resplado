@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg_dark">#0A0A0F</color>
+    <color name="bg_card">#12121A</color>
+    <color name="bg_surface">#1A1A26</color>
+    <color name="accent_blue">#0066FF</color>
+    <color name="accent_cyan">#00C8FF</color>
+    <color name="accent_glow">#1A4FFF</color>
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#8888AA</color>
+    <color name="text_muted">#444466</color>
+    <color name="tab_selected">#0066FF</color>
+    <color name="tab_normal">#2A2A3A</color>
+    <color name="live_badge">#FF3B3B</color>
+    <color name="transparent">#00000000</color>
+</resources>

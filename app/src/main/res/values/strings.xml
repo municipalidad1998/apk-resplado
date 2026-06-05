@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">StreamVault</string>
+    <string name="live">En Vivo</string>
+    <string name="movies">Películas</string>
+    <string name="series">Series</string>
+    <string name="sources">Mis Fuentes</string>
+    <string name="add_source">Agregar Fuente</string>
+    <string name="no_content">Sin contenido. Agrega una fuente primero.</string>
+</resources>

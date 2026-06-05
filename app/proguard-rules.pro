@@ -1,0 +1,3 @@
+-keep class com.streamvault.data.model.** { *; }
+-keep class androidx.media3.** { *; }
+-dontwarn okhttp3.**
