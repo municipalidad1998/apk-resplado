@@ -6,20 +6,23 @@
     android:layout_height="match_parent"
     android:background="@color/bg_dark">
 
+    <!-- Header fijo arriba -->
     <LinearLayout
-        android:id="@+id/header"
+        android:id="@+id/headerLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="@color/bg_dark"
         android:orientation="vertical"
-        android:paddingTop="16dp">
+        android:paddingTop="12dp"
+        android:elevation="4dp">
 
+        <!-- Título + botones -->
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="56dp"
+            android:layout_height="52dp"
             android:gravity="center_vertical"
             android:paddingStart="16dp"
-            android:paddingEnd="16dp">
+            android:paddingEnd="12dp">
 
             <TextView
                 android:layout_width="0dp"
@@ -27,7 +30,7 @@
                 android:layout_weight="1"
                 android:text="StreamVault"
                 android:textColor="@color/text_primary"
-                android:textSize="24sp"
+                android:textSize="22sp"
                 android:textStyle="bold"/>
 
             <TextView
@@ -35,74 +38,106 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textColor="@color/text_secondary"
-                android:textSize="12sp"
-                android:paddingEnd="8dp"/>
+                android:textSize="11sp"
+                android:paddingEnd="6dp"/>
 
             <ImageButton
                 android:id="@+id/fabSearch"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
+                android:layout_width="38dp"
+                android:layout_height="38dp"
                 android:background="@drawable/circle_button"
                 android:src="@android:drawable/ic_menu_search"
                 android:tint="@color/text_primary"/>
 
             <ImageButton
                 android:id="@+id/btnSources"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
+                android:layout_width="38dp"
+                android:layout_height="38dp"
                 android:layout_marginStart="8dp"
                 android:background="@drawable/circle_button"
                 android:src="@android:drawable/ic_menu_add"
                 android:tint="@color/accent_cyan"/>
         </LinearLayout>
 
+        <!-- Search bar -->
         <EditText
             android:id="@+id/searchBar"
             android:layout_width="match_parent"
-            android:layout_height="44dp"
+            android:layout_height="42dp"
             android:layout_marginStart="16dp"
             android:layout_marginEnd="16dp"
-            android:layout_marginBottom="8dp"
+            android:layout_marginBottom="6dp"
             android:background="@drawable/search_bg"
-            android:hint="Buscar canal, pelicula, serie..."
+            android:hint="Buscar..."
             android:textColor="@color/text_primary"
             android:paddingStart="16dp"
             android:paddingEnd="16dp"
             android:visibility="gone"
             android:inputType="text"
-            android:imeOptions="actionSearch"
             android:singleLine="true"/>
 
+        <!-- Tabs EN VIVO / PELICULAS / SERIES -->
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="48dp"
+            android:layout_height="44dp"
             android:orientation="horizontal"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
             android:paddingBottom="4dp">
 
             <Button android:id="@+id/btnLive" style="@style/TabButton"
-                android:layout_width="0dp" android:layout_height="38dp"
-                android:layout_weight="1" android:layout_marginEnd="6dp"
-                android:text="En Vivo"/>
-
+                android:layout_width="0dp" android:layout_height="36dp"
+                android:layout_weight="1" android:layout_marginEnd="5dp"
+                android:text="EN VIVO"/>
             <Button android:id="@+id/btnMovies" style="@style/TabButton"
-                android:layout_width="0dp" android:layout_height="38dp"
-                android:layout_weight="1" android:layout_marginEnd="6dp"
-                android:text="Peliculas"/>
-
+                android:layout_width="0dp" android:layout_height="36dp"
+                android:layout_weight="1" android:layout_marginEnd="5dp"
+                android:text="PELICULAS"/>
             <Button android:id="@+id/btnSeries" style="@style/TabButton"
-                android:layout_width="0dp" android:layout_height="38dp"
-                android:layout_weight="1" android:text="Series"/>
+                android:layout_width="0dp" android:layout_height="36dp"
+                android:layout_weight="1"
+                android:text="SERIES"/>
         </LinearLayout>
+
+        <!-- Barra de categorías horizontal -->
+        <LinearLayout
+            android:id="@+id/categoriesBar"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:paddingBottom="4dp"
+            android:visibility="visible">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvCategories"
+                android:layout_width="match_parent"
+                android:layout_height="36dp"
+                android:clipToPadding="false"/>
+        </LinearLayout>
+
+        <!-- Loading text -->
+        <TextView
+            android:id="@+id/tvLoadingText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingStart="16dp"
+            android:paddingBottom="6dp"
+            android:textColor="@color/text_secondary"
+            android:textSize="11sp"
+            android:visibility="gone"/>
+
     </LinearLayout>
 
+    <!-- Contenido principal -->
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
         android:id="@+id/swipeRefresh"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         app:layout_behavior="@string/appbar_scrolling_view_behavior"
-        android:layout_marginTop="140dp">
+        android:layout_marginTop="168dp">
 
         <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent">
 
@@ -115,8 +150,8 @@
 
             <ProgressBar
                 android:id="@+id/progressBar"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
                 android:layout_gravity="center"
                 android:indeterminateTint="@color/accent_blue"
                 android:visibility="gone"/>
@@ -128,7 +163,6 @@
                 android:layout_gravity="center"
                 android:gravity="center"
                 android:padding="32dp"
-                android:text="Sin contenido.\nAgrega una fuente con el boton +"
                 android:textColor="@color/text_secondary"
                 android:textSize="15sp"
                 android:visibility="gone"/>
