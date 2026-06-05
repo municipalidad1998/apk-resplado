@@ -19,7 +19,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        setupNav(); setupSearch(); observeData(); vm.loadSources(); vm.loadAll()
+        setupNav(); setupSearch(); observeData(); vm.loadSources(); vm.loadAll(); updateTab()
     }
     override fun onResume() { super.onResume(); vm.loadSources() }
     private fun setupNav() {
