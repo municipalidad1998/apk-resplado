@@ -1,69 +1,122 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/playerContainer"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#000000">
 
+    <!-- Video Player -->
     <androidx.media3.ui.PlayerView
         android:id="@+id/playerView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        app:show_buffering="when_playing"
-        app:use_controller="true"
-        app:controller_layout_id="@layout/exo_player_controls"/>
+        app:show_buffering="never"
+        app:use_controller="false"
+        app:resize_mode="fit"/>
 
-    <!-- Top overlay -->
+    <!-- Gradient top -->
+    <View android:layout_width="match_parent" android:layout_height="100dp"
+        android:background="@drawable/gradient_top"/>
+
+    <!-- Gradient bottom -->
+    <View android:layout_width="match_parent" android:layout_height="120dp"
+        android:layout_gravity="bottom"
+        android:background="@drawable/gradient_bottom"/>
+
+    <!-- Top bar -->
     <LinearLayout
-        android:id="@+id/topOverlay"
         android:layout_width="match_parent"
         android:layout_height="64dp"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp"
-        android:background="@drawable/gradient_top">
+        android:paddingStart="12dp"
+        android:paddingEnd="16dp">
 
-        <ImageButton
-            android:id="@+id/btnBack"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="@android:color/transparent"
+        <ImageButton android:id="@+id/btnBack"
+            android:layout_width="44dp" android:layout_height="44dp"
+            android:background="@drawable/circle_button_dark"
             android:src="@android:drawable/ic_media_previous"
             android:tint="#FFFFFF"/>
 
-        <TextView
-            android:id="@+id/tvTitle"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginStart="12dp"
-            android:textColor="#FFFFFF"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:maxLines="1"
-            android:ellipsize="end"/>
+        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1" android:orientation="vertical"
+            android:layout_marginStart="12dp">
+            <TextView android:id="@+id/tvTitle"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textColor="#FFFFFF" android:textSize="16sp" android:textStyle="bold"
+                android:maxLines="1" android:ellipsize="end"/>
+            <TextView android:id="@+id/tvGroup"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textColor="#AAAACC" android:textSize="12sp"
+                android:maxLines="1" android:ellipsize="end"/>
+        </LinearLayout>
+
+        <!-- Calidad -->
+        <ImageButton android:id="@+id/btnQuality"
+            android:layout_width="44dp" android:layout_height="44dp"
+            android:background="@drawable/circle_button_dark"
+            android:src="@android:drawable/ic_menu_manage"
+            android:tint="#FFFFFF"
+            android:layout_marginEnd="8dp"/>
+
+        <!-- Lista de canales -->
+        <ImageButton android:id="@+id/btnChannelList"
+            android:layout_width="44dp" android:layout_height="44dp"
+            android:background="@drawable/circle_button_dark"
+            android:src="@android:drawable/ic_menu_sort_by_size"
+            android:tint="#00C8FF"/>
     </LinearLayout>
 
-    <!-- Buffering -->
-    <ProgressBar
-        android:id="@+id/progressLoading"
-        android:layout_width="56dp"
-        android:layout_height="56dp"
+    <!-- Buffering indicator -->
+    <ProgressBar android:id="@+id/progressLoading"
+        android:layout_width="56dp" android:layout_height="56dp"
         android:layout_gravity="center"
         android:indeterminateTint="#0066FF"
         android:visibility="gone"/>
 
     <!-- Error -->
-    <TextView
-        android:id="@+id/tvError"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:gravity="center"
-        android:padding="24dp"
-        android:textColor="#FF6B6B"
-        android:textSize="15sp"
-        android:visibility="gone"/>
+    <LinearLayout android:layout_gravity="center"
+        android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:orientation="vertical" android:gravity="center" android:padding="24dp">
+        <TextView android:id="@+id/tvError"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:textColor="#FF6B6B" android:textSize="14sp"
+            android:gravity="center" android:visibility="gone"/>
+        <TextView android:id="@+id/tvRetry"
+            android:layout_width="wrap_content" android:layout_height="48dp"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/btn_primary"
+            android:text="  REINTENTAR  "
+            android:textColor="#FFFFFF" android:textStyle="bold"
+            android:gravity="center" android:paddingStart="20dp" android:paddingEnd="20dp"
+            android:visibility="gone"/>
+    </LinearLayout>
+
+    <!-- Side Panel - Lista de canales -->
+    <LinearLayout android:id="@+id/sidePanel"
+        android:layout_width="300dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="end"
+        android:background="#E5000010"
+        android:orientation="vertical"
+        android:translationX="300dp"
+        android:visibility="gone">
+
+        <TextView android:id="@+id/tvSidePanelTitle"
+            android:layout_width="match_parent" android:layout_height="56dp"
+            android:gravity="center_vertical"
+            android:paddingStart="16dp" android:paddingEnd="16dp"
+            android:text="Canales" android:textColor="#FFFFFF"
+            android:textSize="15sp" android:textStyle="bold"
+            android:background="#CC000020"/>
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvSideList"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:clipToPadding="false"/>
+    </LinearLayout>
+
 </FrameLayout>

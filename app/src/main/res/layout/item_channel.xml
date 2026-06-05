@@ -1,27 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent" android:layout_height="68dp"
-    android:background="@drawable/item_bg" android:orientation="horizontal"
-    android:gravity="center_vertical" android:paddingStart="14dp" android:paddingEnd="14dp"
-    android:layout_marginStart="12dp" android:layout_marginEnd="12dp" android:layout_marginTop="4dp">
+    android:layout_width="match_parent" android:layout_height="64dp"
+    android:background="@drawable/item_bg_selector"
+    android:orientation="horizontal" android:gravity="center_vertical"
+    android:paddingStart="14dp" android:paddingEnd="14dp"
+    android:layout_marginStart="12dp" android:layout_marginEnd="12dp"
+    android:layout_marginTop="2dp">
+
+    <TextView android:id="@+id/tvFlag"
+        android:layout_width="28dp" android:layout_height="28dp"
+        android:textSize="20sp" android:gravity="center"
+        android:layout_marginEnd="4dp"/>
 
     <ImageView android:id="@+id/imgLogo"
-        android:layout_width="44dp" android:layout_height="44dp"
-        android:scaleType="centerCrop" android:background="@drawable/logo_bg"/>
+        android:layout_width="44dp" android:layout_height="40dp"
+        android:scaleType="centerInside"
+        android:background="@drawable/logo_bg"
+        android:padding="4dp"/>
 
     <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
         android:layout_weight="1" android:orientation="vertical"
-        android:layout_marginStart="12dp">
+        android:layout_marginStart="10dp">
         <TextView android:id="@+id/tvName"
             android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:textColor="@color/text_primary" android:textSize="15sp"
+            android:textColor="#FFFFFF" android:textSize="14sp"
             android:maxLines="1" android:ellipsize="end"/>
         <TextView android:id="@+id/tvGroup"
             android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:textColor="@color/text_secondary" android:textSize="12sp"
+            android:textColor="#8888AA" android:textSize="11sp"
             android:maxLines="1" android:ellipsize="end"/>
     </LinearLayout>
 
-    <View android:layout_width="6dp" android:layout_height="6dp"
+    <View android:layout_width="7dp" android:layout_height="7dp"
         android:background="@drawable/live_dot"/>
 </LinearLayout>

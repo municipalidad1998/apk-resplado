@@ -3,13 +3,21 @@
     android:layout_width="match_parent" android:layout_height="wrap_content"
     android:orientation="vertical" android:padding="4dp">
 
-    <ImageView android:id="@+id/imgCover"
-        android:layout_width="match_parent" android:layout_height="140dp"
-        android:scaleType="centerCrop" android:background="@drawable/cover_bg"/>
+    <FrameLayout android:layout_width="match_parent" android:layout_height="150dp">
+        <ImageView android:id="@+id/imgCover"
+            android:layout_width="match_parent" android:layout_height="match_parent"
+            android:scaleType="centerCrop" android:background="@drawable/cover_bg"/>
+        <TextView android:id="@+id/tvRating"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_gravity="bottom|end"
+            android:background="#AA000000"
+            android:textColor="#FFD700" android:textSize="10sp"
+            android:paddingStart="4dp" android:paddingEnd="4dp" android:paddingBottom="2dp" android:paddingTop="2dp"/>
+    </FrameLayout>
 
     <TextView android:id="@+id/tvName"
         android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:textColor="@color/text_primary" android:textSize="11sp"
+        android:textColor="#FFFFFF" android:textSize="11sp"
         android:maxLines="2" android:ellipsize="end"
         android:paddingTop="4dp" android:paddingStart="2dp" android:paddingEnd="2dp"/>
 </LinearLayout>
