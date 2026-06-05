@@ -5,7 +5,6 @@
     android:layout_height="match_parent"
     android:background="#000000">
 
-    <!-- Video -->
     <androidx.media3.ui.PlayerView
         android:id="@+id/playerView"
         android:layout_width="match_parent"
@@ -14,7 +13,7 @@
         app:use_controller="false"
         app:resize_mode="fit"/>
 
-    <!-- TOP BAR (se oculta automáticamente) -->
+    <!-- TOP BAR -->
     <LinearLayout
         android:id="@+id/topBar"
         android:layout_width="match_parent"
@@ -41,7 +40,7 @@
             <TextView android:id="@+id/tvGroup"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:textColor="#00C8FF" android:textSize="11sp"
-                android:maxLines="1" android:ellipsize="end" android:layout_marginTop="1dp"/>
+                android:maxLines="1" android:ellipsize="end"/>
         </LinearLayout>
 
         <ImageButton android:id="@+id/btnQuality"
@@ -65,25 +64,34 @@
         android:indeterminateTint="#0066FF"
         android:visibility="gone"/>
 
-    <!-- Error + Retry centrado -->
-    <LinearLayout android:layout_gravity="center"
-        android:layout_width="260dp" android:layout_height="wrap_content"
-        android:orientation="vertical" android:gravity="center"
-        android:background="@drawable/error_bg" android:padding="20dp">
-        <TextView android:id="@+id/tvError"
-            android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:textColor="#FF8888" android:textSize="13sp" android:gravity="center"
-            android:visibility="gone"/>
-        <TextView android:id="@+id/btnRetry"
-            android:layout_width="match_parent" android:layout_height="44dp"
-            android:layout_marginTop="12dp"
-            android:background="@drawable/btn_primary"
-            android:text="REINTENTAR"
-            android:textColor="#FFFFFF" android:textStyle="bold"
-            android:gravity="center" android:visibility="gone"/>
-    </LinearLayout>
+    <!-- Error - INVISIBLE por defecto, sin background contenedor -->
+    <TextView android:id="@+id/tvError"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:layout_marginBottom="60dp"
+        android:background="@drawable/error_bg"
+        android:paddingStart="16dp" android:paddingEnd="16dp"
+        android:paddingTop="10dp" android:paddingBottom="10dp"
+        android:textColor="#FF8888"
+        android:textSize="13sp"
+        android:gravity="center"
+        android:visibility="gone"/>
 
-    <!-- Panel lateral de canales -->
+    <!-- Retry button - separado -->
+    <TextView android:id="@+id/btnRetry"
+        android:layout_width="160dp"
+        android:layout_height="44dp"
+        android:layout_gravity="center"
+        android:layout_marginTop="80dp"
+        android:background="@drawable/btn_primary"
+        android:text="REINTENTAR"
+        android:textColor="#FFFFFF"
+        android:textStyle="bold"
+        android:gravity="center"
+        android:visibility="gone"/>
+
+    <!-- Panel lateral -->
     <LinearLayout android:id="@+id/sidePanel"
         android:layout_width="290dp"
         android:layout_height="match_parent"
@@ -93,17 +101,17 @@
         android:visibility="gone">
 
         <LinearLayout android:layout_width="match_parent" android:layout_height="54dp"
-            android:gravity="center_vertical" android:paddingStart="16dp" android:paddingEnd="12dp"
-            android:background="#CC000820">
+            android:gravity="center_vertical"
+            android:paddingStart="16dp" android:paddingEnd="12dp"
+            android:background="#DD000820">
             <TextView android:id="@+id/tvSidePanelTitle"
-                android:layout_width="0dp" android:layout_height="wrap_content"
-                android:layout_weight="1"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:textColor="#FFFFFF" android:textSize="13sp" android:textStyle="bold"
                 android:letterSpacing="0.05"/>
         </LinearLayout>
 
         <View android:layout_width="match_parent" android:layout_height="1dp"
-            android:background="#220066FF"/>
+            android:background="#330066FF"/>
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rvSideList"

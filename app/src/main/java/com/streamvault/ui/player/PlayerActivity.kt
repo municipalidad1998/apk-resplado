@@ -127,6 +127,12 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     private fun loadChannelList() {
+        // Usar cache si está disponible - evitar recargar
+        if (com.streamvault.util.ChannelCache.isLoaded()) {
+            allChannels = com.streamvault.util.ChannelCache.get()
+            setupSidePanel()
+            return
+        }
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val prefs = getSharedPreferences("streamvault", Context.MODE_PRIVATE)
