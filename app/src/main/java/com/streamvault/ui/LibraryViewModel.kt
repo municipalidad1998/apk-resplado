@@ -147,6 +147,8 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
         busy.value = true
         try {
             val result = app.analysis.resolve(track.id, force = true) ?: error("La pista no está disponible")
+            dao.manualOffset(track.id, null)
+            if (!settings.value.detectSilence) app.preferences.update { it.copy(detectSilence = true) }
             notify("Inicio analizado: ${"%.2f".format(result.detectedOffsetMs / 1000.0)} s. Aplicado a la cola actual.")
         } finally { busy.value = false }
     }

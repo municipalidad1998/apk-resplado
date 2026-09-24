@@ -44,7 +44,7 @@ class PlaybackRegressionTests {
     }
     private suspend fun waitFor(check: () -> Boolean) = withTimeout(25000) { while (!check()) delay(80) }
 
-    @Test fun menuQueuePreviousNextElevenSecondIntroAndQueuePanel() = runBlocking {
+    @Test fun menuQueuePreviousNextElevenSecondIntroAndQueuePanel() = runBlocking<Unit> {
         val a = wav("regression-intro.wav", 60, 11); val b = wav("regression-next.wav", 60)
         val settings = app.preferences.state.value
         app.preferences.update { it.copy(crossfade = 0, repeat = 0, shuffle = false, detectSilence = true, autoScan = false) }
@@ -59,6 +59,8 @@ class PlaybackRegressionTests {
             waitFor { vm.playback.value.currentId == second.id && vm.playback.value.playing }
             main { vm.seek(5000) }
             delay(400)
+            app.library.manualOffset(second.id, 15000)
+            waitFor { vm.playback.value.position >= 15000 }
             main { vm.previous() }
             waitFor { vm.playback.value.currentId == first.id && vm.playback.value.playing }
             assertTrue(vm.playback.value.position >= 10_800)
@@ -75,14 +77,15 @@ class PlaybackRegressionTests {
         }
     }
 
-    @Test fun selectedUsefulEndSkipsTwoMinuteOutroAndUsesPerTrackCrossfade() = runBlocking {
+    @Test fun selectedUsefulEndSkipsTwoMinuteOutroAndUsesPerTrackCrossfade() = runBlocking<Unit> {
         val a = wav("regression-outro.wav", 128); val b = wav("regression-after-outro.wav", 25)
         val settings = app.preferences.state.value
         app.preferences.update { it.copy(crossfade = 0, repeat = 0, shuffle = false, detectSilence = false, autoPlay = true) }
         val first = register(a, "Outro A", 128000); val second = register(b, "Outro B", 25000)
         try {
-            app.library.transition(first.id, 8000, 2)
-            main { vm.play(first, listOf(first, second)) } // Queue contains stale defaults; Room overrides must win.
+            main { vm.play(first, listOf(first, second)) }
+            waitFor { vm.playback.value.currentId == first.id && vm.playback.value.playing }
+            app.library.transition(first.id, 8000, 2) // Update the already-loaded queue, not only a future playback.
             waitFor { PlaybackEvents.mixing.value }
             waitFor { vm.playback.value.currentId == second.id && vm.playback.value.playing }
             assertTrue(vm.playback.value.position in 1000..5000)
@@ -93,7 +96,7 @@ class PlaybackRegressionTests {
         }
     }
 
-    @Test fun migrationKeepsLibraryAndPlaylistWhenUpdatingFromVersionOne() = runBlocking {
+    @Test fun migrationKeepsLibraryAndPlaylistWhenUpdatingFromVersionOne() = runBlocking<Unit> {
         val name = "migration-regression.db"
         app.deleteDatabase(name)
         val db = Room.databaseBuilder(app, LibraryDatabase::class.java, name).build()

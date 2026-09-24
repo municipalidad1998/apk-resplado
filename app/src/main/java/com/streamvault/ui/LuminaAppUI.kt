@@ -22,12 +22,13 @@ fun LuminaAppUI(vm: LibraryViewModel, requestPermission: () -> Unit, chooseFolde
     val settings by vm.settings.collectAsStateWithLifecycle()
     val playback by vm.playback.collectAsStateWithLifecycle()
     val current by vm.current.collectAsStateWithLifecycle()
+    val analyzing by vm.analyzing.collectAsStateWithLifecycle()
     val message by vm.message.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     var page by rememberSaveable { mutableIntStateOf(0) }
     var fullPlayer by rememberSaveable { mutableStateOf(false) }
     var menuTrack by remember { mutableStateOf<Track?>(null) }
-    LaunchedEffect(message) { message?.let { snackbar.showSnackbar(it); vm.message.value = null } }
+    LaunchedEffect(message, fullPlayer, menuTrack) { if (!fullPlayer && menuTrack == null) message?.let { snackbar.showSnackbar(it); vm.message.value = null } }
     fun library(filter: LibraryFilter = LibraryFilter()) { vm.filter.value = filter; vm.query.value = ""; page = 1 }
     val labels = listOf("Inicio", "Biblioteca", "Playlists", "Buscar", "Ajustes")
     val icons = listOf(Icons.Rounded.Home, Icons.Rounded.LibraryMusic, Icons.Rounded.QueueMusic, Icons.Rounded.Search, Icons.Rounded.Tune)
@@ -42,7 +43,7 @@ fun LuminaAppUI(vm: LibraryViewModel, requestPermission: () -> Unit, chooseFolde
                     }
                     Scaffold(modifier = Modifier.weight(1f), snackbarHost = { SnackbarHost(snackbar) }, bottomBar = {
                         Column {
-                            if (current != null) MiniPlayer(current!!, playback, vm::toggle, vm::next) { fullPlayer = true }
+                            if (current != null) MiniPlayer(current!!, playback, vm::toggle, vm::next, analyzing == current?.id) { fullPlayer = true }
                             if (!wide) NavigationBar(containerColor = MaterialTheme.colorScheme.background, tonalElevation = 0.dp) {
                                 labels.forEachIndexed { i, label -> NavigationBarItem(selected = page == i,
                                     onClick = { page = i; if (i == 3) vm.filter.value = LibraryFilter() },
@@ -65,6 +66,10 @@ fun LuminaAppUI(vm: LibraryViewModel, requestPermission: () -> Unit, chooseFolde
                 }
                 if (fullPlayer && current != null) FullPlayer(vm, current!!, playback, { fullPlayer = false }, { menuTrack = it }, { library(); fullPlayer = false })
                 menuTrack?.let { track -> TrackActions(vm, track, { menuTrack = null }) }
+                if (message != null && (fullPlayer || menuTrack != null)) AlertDialog(
+                    onDismissRequest = { vm.message.value = null }, title = { Text("Lúmina") },
+                    text = { Text(message.orEmpty()) }, confirmButton = { TextButton(onClick = { vm.message.value = null }) { Text("Aceptar") } }
+                )
             }
         }
     }

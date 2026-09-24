@@ -169,7 +169,7 @@ fun OffsetDialog(vm: LibraryViewModel, track: Track, busy: Boolean, dismiss: () 
                 Text("Forma de onda del fragmento inicial", fontSize = 10.sp)
             }
             Info("INICIO DETECTADO", "${"%.2f".format(track.detectedOffsetMs / 1000.0)} s")
-            Button(onClick = { vm.analyze(track) }, enabled = !busy && !working) { Text(if (busy || working) "Analizando audio…" else "Detectar inicio automáticamente") }
+            Button(onClick = { vm.analyze(track) }, enabled = !busy && !working) { Text(if (busy || working) "Analizando audio…" else "Detectar y usar inicio automático") }
             if (busy || working) LinearProgressIndicator(Modifier.fillMaxWidth())
             OutlinedTextField(offset, { offset = it }, label = { Text("Inicio manual: mm:ss o segundos") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text), singleLine = true)
             Row {

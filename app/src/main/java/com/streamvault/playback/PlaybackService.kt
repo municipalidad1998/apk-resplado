@@ -100,6 +100,13 @@ class PlaybackService : MediaSessionService() {
             setWakeMode(C.WAKE_MODE_LOCAL)
         }
     private val listener = object : Player.Listener {
+        override fun onPlaybackStateChanged(playbackState: Int) {
+            if (playbackState == Player.STATE_READY) {
+                val id = active.currentMediaItem?.mediaId ?: return
+                val duration = active.duration
+                if (duration > 0) scope.launch { app.library.discoveredDuration(id, duration) }
+            }
+        }
         override fun onAudioSessionIdChanged(audioSessionId: Int) { PlaybackEvents.audioSessionId.value = audioSessionId }
         override fun onPlayerError(error: PlaybackException) {
             cancelMix()

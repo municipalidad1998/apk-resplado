@@ -19,8 +19,8 @@ class AnalysisRepository(private val app: LuminaApp) {
             val result = withTimeout(45_000) { SilenceAnalyzer(app).analyze(track.uri, settings.thresholdDb, settings.minimumSilence) }
             app.library.analysis(id, result.offsetMs, result.waveform, settings.analysisKey)
             app.library.track(id)
-        } catch (e: CancellationException) { throw e }
-        catch (e: Exception) {
+        } catch (e: Exception) {
+            if (e is CancellationException && e !is kotlinx.coroutines.TimeoutCancellationException) throw e
             app.library.analysis(id, track.detectedOffsetMs, track.waveform, "failed:${settings.analysisKey}")
             throw IllegalStateException("No se pudo analizar ${track.displayName}: ${e.localizedMessage}. Puedes fijar el inicio manualmente.", e)
         }

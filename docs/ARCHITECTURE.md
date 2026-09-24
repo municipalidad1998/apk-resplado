@@ -18,7 +18,7 @@
 
 `queue`: orden de pistas, permite duplicados. Posición actual y ajustes pequeños se guardan en SharedPreferences. Cada tres segundos y al pausar/destruir se guarda la posición. No se fuerza reproducción al restaurar.
 
-Versión inicial de la nueva biblioteca: 1. Las futuras modificaciones deben agregar una `Migration` y tests; **no usar migración destructiva**. Room exporta esquemas a `app/schemas` durante la compilación. La DB IPTV anterior no se reutiliza.
+Versión actual de la biblioteca: 2, con `MIGRATION_1_2` que añade `playbackEndMs` y `crossfadeSeconds` sin borrar datos. Las futuras modificaciones deben agregar una `Migration` y tests; **no usar migración destructiva**. Room exporta esquemas a `app/schemas` durante la compilación. La DB IPTV anterior no se reutiliza.
 
 ## Lectura y límites de memoria
 
@@ -30,7 +30,7 @@ Hash en bloques de 128 KiB y cancelación cooperativa. No se mantiene el archivo
 
 `SilenceGate` es independiente de Android. `SilenceAnalyzer` extrae una pista de audio, decodifica con MediaCodec y procesa PCM16 o float. Usa marcas de tiempo de salida y número de muestras; no confunde bytes comprimidos con amplitud. La sensibilidad se expresa en dBFS RMS; requiere 60 ms de sonido continuo y aplica 80 ms de pre-roll.
 
-El resultado nunca cambia el archivo. `manualOffsetMs` es nullable: null utiliza el automático si está habilitado; 0 fuerza el inicio original. La firma `rms-v2:threshold:minimum` evita análisis repetidos y cambia al modificar ajustes. La forma de onda es una vista inicial, no de la canción completa.
+El resultado nunca cambia el archivo. `manualOffsetMs` es nullable: null utiliza el automático si está habilitado; 0 fuerza el inicio original. La firma `rms-v3:threshold:minimum` evita análisis repetidos y cambia al modificar ajustes. La forma de onda es una vista inicial, no de la canción completa.
 
 ## Crossfade
 
@@ -49,3 +49,9 @@ Es una transición de potencia constante, no un limitador de picos, un DJ con be
 Paleta original lavanda/carbón/verde, arte geométrico generado, tarjetas y Material 3. La portada real muestreada tiñe el fondo del reproductor. Temas claros/oscuros/sistema y navegación adaptable a rail en tablet. Los carruseles están ocultos si aún no contienen datos: no se muestran estadísticas ni reproducciones ficticias.
 
 El menú ofrece nombre personalizado, edición, favoritas, playlists, cola/álbum, portada, offset, compartir el archivo original con permiso temporal, ubicación, información y ocultación reversible. Los botones de orden son accesibles; no dependen de drag-and-drop. La cola se abre como hoja encima del reproductor, también al deslizar la portada hacia arriba.
+
+## Corrección 2.1: lectura de puntos en vivo
+
+`AnalysisRepository` coordina el análisis prioritario solicitado por el servicio y el trabajo en segundo plano. Comparte locks por pista, una firma de caché y distingue fallos. El servicio pausa la entrada de una pista mientras resuelve su inicio, registra la intención de play/pause, cancela resultados obsoletos al cambiar de pista y observa una proyección de Room para aplicar nuevos puntos a la cola cargada. El siguiente canal se prepara solo después de resolver su offset.
+
+El final manual es independiente de la duración del crossfade. `PlaybackCue` calcula el final útil y el tramo disponible; los datos viven por pista, y el valor nullable permite volver a heredar el ajuste global. La cola ahora es un panel dentro de la ventana del reproductor, no una hoja modal anidada sobre un diálogo a pantalla completa.

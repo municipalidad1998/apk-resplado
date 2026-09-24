@@ -37,8 +37,10 @@ data class Track(
 ) {
     val displayName: String get() = customName.ifBlank { title }
     val artworkKey: String get() = "$displayName|$artist|$album"
-    fun offset(enabled: Boolean): Long = (manualOffsetMs ?: if (enabled) detectedOffsetMs else 0)
-        .coerceIn(0, (durationMs - 100).coerceAtLeast(0))
+    fun offset(enabled: Boolean): Long {
+        val offset = (manualOffsetMs ?: if (enabled) detectedOffsetMs else 0).coerceAtLeast(0)
+        return if (durationMs > 0) offset.coerceAtMost((durationMs - 100).coerceAtLeast(0)) else offset
+    }
 }
 
 @Entity(tableName = "locations", indices = [Index("trackId"), Index("root")])
@@ -81,6 +83,8 @@ interface LibraryDao {
     @Query("SELECT * FROM tracks WHERE id = :id") fun observeTrack(id: String): Flow<Track?>
     @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun insert(track: Track): Long
     @Update suspend fun update(track: Track)
+    @Query("UPDATE tracks SET durationMs = :duration WHERE id = :id AND durationMs <= 0")
+    suspend fun discoveredDuration(id: String, duration: Long)
     @Query("UPDATE tracks SET favorite = NOT favorite WHERE id = :id") suspend fun favorite(id: String)
     @Query("UPDATE tracks SET plays = plays + 1, lastPlayed = :time WHERE id = :id") suspend fun played(id: String, time: Long)
     @Query("UPDATE tracks SET hidden = 1 WHERE id = :id") suspend fun hide(id: String)

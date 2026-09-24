@@ -39,13 +39,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 @Composable
-fun MiniPlayer(track: Track, state: PlaybackState, toggle: () -> Unit, next: () -> Unit, expand: () -> Unit) {
+fun MiniPlayer(track: Track, state: PlaybackState, toggle: () -> Unit, next: () -> Unit, analyzing: Boolean = false, expand: () -> Unit) {
     Column(Modifier.testTag("mini-player").padding(horizontal = 10.dp).clip(RoundedCornerShape(15.dp)).background(MaterialTheme.colorScheme.surfaceVariant).clickable(onClick = expand)) {
         Row(Modifier.padding(start = 9.dp, top = 8.dp, bottom = 7.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Cover(track.artworkKey, track.displayName, track.cover, Modifier.size(43.dp), track.source == "whatsapp")
             Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
                 Text(track.displayName, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                Text(track.artist, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(if (analyzing) "Analizando inicio…" else track.artist, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             ActionIcon(if (state.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (state.playing) "Pausar" else "Reproducir", toggle)
             ActionIcon(Icons.Rounded.SkipNext, "Siguiente", next)
@@ -82,7 +82,7 @@ fun FullPlayer(vm: LibraryViewModel, track: Track, state: PlaybackState, dismiss
             }.getOrDefault(Color(0xFF332845))
         }
     }
-    Dialog(onDismissRequest = dismiss, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
+    Dialog(onDismissRequest = { if (queue) queue = false else dismiss() }, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             Box(Modifier.fillMaxSize()) {
             Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(background.copy(alpha = .48f), MaterialTheme.colorScheme.background))).safeDrawingPadding()) {

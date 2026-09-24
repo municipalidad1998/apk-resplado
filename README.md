@@ -1,10 +1,12 @@
 # Lúmina · Tu música, en tu universo
 
+**Actualización 2.1:** [correcciones de cola, inicio, navegación y crossfade por pista](docs/PLAYER_FIXES_2_1.md).
+
 Reproductor **Android nativo**, local y sin cuenta. Kotlin + Jetpack Compose + Room + Media3. Este proyecto reemplaza la interfaz IPTV anterior de StreamVault; conserva `applicationId = com.streamvault`, pero utiliza una nueva base `lumina-library.db` y **no importa las antiguas listas IPTV**.
 
 No es una web empaquetada, no contiene canciones de demostración y no sube archivos. Al abrirlo por primera vez, la biblioteca estará vacía hasta que se autorice el acceso a música o una carpeta.
 
-## APK verificado
+## APK anterior verificado (2.0; ver actualización 2.1 arriba)
 
 **[Descargar Lúmina debug (ZIP con APK)](https://github.com/municipalidad1998/apk-resplado/actions/runs/35942450216/artifacts/10785677058)** · [Resultado de CI y reportes](https://github.com/municipalidad1998/apk-resplado/actions/runs/35942450216)
 
@@ -62,7 +64,7 @@ El workflow `.github/workflows/build.yml` compila, ejecuta tests JVM y lint, pub
 - Metadatos con `MediaMetadataRetriever`, portada embebida, `cover.jpg`, `folder.jpg`, `album.jpg` y PNG en carpetas **SAF**, imagen manual copiada al almacenamiento privado y portadas gráficas deterministas de respaldo.
 - Detección de WhatsApp por carpeta y nombres `AUD-/PTT-AAAAMMDD-WA…`; fecha extraída del nombre cuando es válida. Los nombres personalizados solo cambian en Room.
 - Reproducción real con **Media3 ExoPlayer**, `MediaSessionService`, notificación multimedia, controles externos, audio focus, desconexión de auriculares y wake lock durante reproducción.
-- **Crossfade real con dos ExoPlayers simultáneos** y ganancias seno/coseno de potencia constante. Duraciones 0/2/5/10/15/20/30 s. El servicio cambia el reproductor de la sesión al canal entrante al terminar la mezcla: no reinicia la canción siguiente ni crea un archivo mezclado.
+- **Crossfade real con dos ExoPlayers simultáneos** y ganancias seno/coseno de potencia constante. Duraciones globales 0/2/5/10/15/20/30/60/90/120/180 s y ajuste por pista de 0–180 s, con final útil manual. El servicio cambia el reproductor de la sesión al canal entrante al terminar la mezcla: no reinicia la canción siguiente ni crea un archivo mezclado.
 - Salto configurable 5/10/15/30 s, anterior/siguiente, seek, volumen del sistema, aleatorio, repetir una/toda la cola, favoritos, entrada/salida suave sin crossfade.
 - Análisis PCM de silencio en segundo plano. Ventanas RMS de 20 ms, tres ventanas consecutivas de señal, umbral configurable, mínimo de silencio y 80 ms de pre-roll. Offset automático y manual persistente, reproducción original y forma de onda **del fragmento inicial**.
 - Búsqueda incremental por título, nombre personalizado, archivo, artista, álbum, género, carpeta y etiquetas. Biblioteca paginada con 60 filas/página y caché acotada. Portadas bajo demanda con Coil.
@@ -77,8 +79,8 @@ El workflow `.github/workflows/build.yml` compila, ejecuta tests JVM y lint, pub
 - La búsqueda es SQLite `LIKE` (insensible a mayúsculas ASCII, no elimina diacríticos); no es un buscador fonético. Se prueba la lógica, no se ha certificado una latencia determinada con 10.000 pistas.
 - La cola creada desde la biblioteca incluye el conjunto filtrado completo mediante una consulta de metadatos ligeros, no solo la página visible. Una playlist o álbum agregado a cola incluye su colección. No se cargan las 10.000 portadas ni las formas de onda en el reproductor.
 - La deduplicación compara **bytes exactos**, no huellas acústicas. Dos codificaciones o archivos con etiquetas embebidas diferentes pueden ser pistas distintas.
-- El análisis busca el comienzo en los **primeros 120 segundos**. Si no hay sonido sostenido, conserva cero. Si el decodificador falla, la tarea automática conserva cero para no bloquear la biblioteca; se puede reintentar manualmente y ver el error. Los cambios de sensibilidad invalidan la caché de análisis. Los nuevos offsets se aplican al volver a cargar una pista en la cola.
-- Crossfade se limita a la mitad del fragmento reproducible de cada pista corta. Se desactiva en repetir-una, reproducción automática desactivada o duración desconocida. Busca continuidad de ganancia, **no sincroniza BPM** ni evita por sí solo clipping en dos señales correlacionadas a máximo nivel.
+- El análisis busca el comienzo en los **primeros 120 segundos**. Si no hay sonido sostenido, conserva cero. Si el decodificador falla, la tarea automática conserva cero para no bloquear la biblioteca; se puede reintentar manualmente y ver el error. Los cambios de sensibilidad invalidan la caché de análisis. Los offsets se consultan antes de reproducir y se actualizan en la cola cargada; un inicio original explícito se respeta.
+- Crossfade se limita al fragmento reproducible disponible de cada pista, descontando un pequeño margen de seguridad. Se desactiva en repetir-una, reproducción automática desactivada o duración desconocida. Busca continuidad de ganancia, **no sincroniza BPM** ni evita por sí solo clipping en dos señales correlacionadas a máximo nivel.
 - La normalización de volumen/LUFS no está implementada y se indica en Ajustes. El ecualizador abre el panel del fabricante si existe. Calidad = archivo original, no una selección de bitrate ficticia.
 - No hay descarga de carátulas por Internet. No se solicita `INTERNET` ni `MANAGE_EXTERNAL_STORAGE`.
 - El escaneo periódico lo programa WorkManager; Android puede aplazarlo por batería/Doze. El observador de cambios funciona mientras la actividad está visible. Un “Forzar detención” de Android detiene también el servicio: no se intenta eludirlo.
