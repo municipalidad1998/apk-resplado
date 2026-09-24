@@ -14,6 +14,7 @@ import com.streamvault.data.AudioLocation
 import com.streamvault.data.Track
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.sync.withLock
 import java.security.MessageDigest
 import java.time.LocalDate
 import java.time.ZoneId
@@ -26,7 +27,8 @@ class AudioScanner(private val app: LuminaApp, private val progress: suspend (In
     private var count = 0
     private val warnings = mutableListOf<String>()
     private val excluded = app.preferences.state.value.excludedFolders.lines().map { it.trim() }.filter { it.isNotEmpty() }
-    suspend fun scan(): List<String> {
+    suspend fun scan(): List<String> = app.scanMutex.withLock { scanInternal() }
+    private suspend fun scanInternal(): List<String> {
         val permission = if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_AUDIO else Manifest.permission.READ_EXTERNAL_STORAGE
         if (ContextCompat.checkSelfPermission(app, permission) == PackageManager.PERMISSION_GRANTED) {
             val volumes = if (Build.VERSION.SDK_INT >= 29) MediaStore.getExternalVolumeNames(app) else setOf("external")

@@ -65,7 +65,7 @@ fun LibraryScreen(vm: LibraryViewModel, search: Boolean, permission: () -> Unit,
                 } else EmptyState("No encontramos esos sonidos", "Prueba otro título, artista, etiqueta o carpeta.", Icons.Rounded.SearchOff)
             }
             items(songs.itemCount, key = songs.itemKey { it.id }) { index ->
-                songs[index]?.let { track -> TrackRow(track, current?.id == track.id, { vm.play(track, songs.itemSnapshotList.items) }, { menu(track) }) }
+                songs[index]?.let { track -> TrackRow(track, current?.id == track.id, { vm.playLibrary(track) }, { menu(track) }) }
             }
             if (songs.loadState.refresh is LoadState.Loading || songs.loadState.append is LoadState.Loading) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
             if (songs.loadState.refresh is LoadState.Error) item { TextButton(onClick = songs::retry) { Text("No se pudo cargar. Reintentar") } }

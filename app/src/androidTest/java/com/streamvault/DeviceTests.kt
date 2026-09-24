@@ -77,11 +77,12 @@ class DeviceTests {
         try {
             repeat(2) { n ->
                 val values = ContentValues().apply { put(MediaStore.Audio.Media.DISPLAY_NAME, "lumina-device-test-$n.wav"); put(MediaStore.Audio.Media.MIME_TYPE, "audio/wav"); put(MediaStore.Audio.Media.RELATIVE_PATH, "Music/LuminaTest/"); put(MediaStore.Audio.Media.IS_PENDING, 1) }
-                val uri = resolver.insert(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, values)!!; uris += uri
+                val uri = resolver.insert(MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY), values)!!; uris += uri
                 resolver.openOutputStream(uri)!!.use { it.write(file.readBytes()) }
                 resolver.update(uri, ContentValues().apply { put(MediaStore.Audio.Media.IS_PENDING, 0) }, null, null)
             }
-            AudioScanner(app) { _, _ -> }.scan()
+            val warnings = AudioScanner(app) { _, _ -> }.scan()
+            assertTrue("Scanner warnings: $warnings", warnings.isEmpty())
             val a = app.library.location(uris[0].toString())!!; val b = app.library.location(uris[1].toString())!!
             assertEquals(a.trackId, b.trackId)
             val t = app.library.track(a.trackId)!!; app.library.update(t.copy(customName = "Mi audio"))

@@ -117,7 +117,7 @@ private fun CoverCarousel(tracks: List<Track>, large: Boolean, play: (Track) -> 
     LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
         items(tracks, key = { it.id }) { track ->
             Column(Modifier.width(if (large) 152.dp else 120.dp)) {
-                Cover(track.id, track.displayName, track.cover, Modifier.fillMaxWidth().aspectRatio(1f).clickable { play(track) }, track.source == "whatsapp")
+                Cover(track.artworkKey, track.displayName, track.cover, Modifier.fillMaxWidth().aspectRatio(1f).clickable { play(track) }, track.source == "whatsapp")
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(track.displayName, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, modifier = Modifier.weight(1f))
                     ActionIcon(Icons.Rounded.MoreVert, "Opciones de ${track.displayName}", { menu(track) }, modifier = Modifier.size(32.dp))

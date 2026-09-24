@@ -34,6 +34,7 @@ data class Track(
     val available: Boolean = true
 ) {
     val displayName: String get() = customName.ifBlank { title }
+    val artworkKey: String get() = "$displayName|$artist|$album"
     fun offset(enabled: Boolean): Long = (manualOffsetMs ?: if (enabled) detectedOffsetMs else 0)
         .coerceIn(0, (durationMs - 100).coerceAtLeast(0))
 }
@@ -51,10 +52,20 @@ data class PlaylistEntry(val playlistId: String, val trackId: String, val positi
 @Entity(tableName = "queue")
 data class QueueEntry(@PrimaryKey val position: Int, val trackId: String)
 
+/** Lean projection: the full playback queue never loads waveform blobs or image pixels. */
+data class QueueRecord(val id: String, val uri: String, val title: String, val artist: String,
+                       val album: String, val durationMs: Long, val cover: String?, val customName: String,
+                       val detectedOffsetMs: Long, val manualOffsetMs: Long?) {
+    fun toTrack() = Track(id, uri, "", title, artist = artist, album = album, durationMs = durationMs,
+        cover = cover, customName = customName, detectedOffsetMs = detectedOffsetMs, manualOffsetMs = manualOffsetMs)
+}
+
 @Dao
 interface LibraryDao {
     @Query("SELECT * FROM tracks WHERE hidden = 0 AND available = 1 AND (:sort != 'recent' OR lastPlayed > 0) AND (:source = '' OR source = :source) AND (:favorite = 0 OR favorite = 1) AND (:folder = '' OR folder = :folder) AND (:artist = '' OR artist = :artist) AND (:album = '' OR album = :album) AND (:genre = '' OR genre = :genre) AND (title LIKE :query ESCAPE '\\' OR customName LIKE :query ESCAPE '\\' OR artist LIKE :query ESCAPE '\\' OR album LIKE :query ESCAPE '\\' OR genre LIKE :query ESCAPE '\\' OR folder LIKE :query ESCAPE '\\' OR tags LIKE :query ESCAPE '\\' OR fileName LIKE :query ESCAPE '\\') ORDER BY CASE WHEN :sort = 'recent' THEN lastPlayed WHEN :sort = 'added' THEN addedAt ELSE 0 END DESC, title COLLATE NOCASE")
     fun page(query: String, source: String, favorite: Boolean, folder: String, artist: String, album: String, genre: String, sort: String): PagingSource<Int, Track>
+    @Query("SELECT id, uri, title, artist, album, durationMs, cover, customName, detectedOffsetMs, manualOffsetMs FROM tracks WHERE hidden = 0 AND available = 1 AND (:sort != 'recent' OR lastPlayed > 0) AND (:source = '' OR source = :source) AND (:favorite = 0 OR favorite = 1) AND (:folder = '' OR folder = :folder) AND (:artist = '' OR artist = :artist) AND (:album = '' OR album = :album) AND (:genre = '' OR genre = :genre) AND (title LIKE :query ESCAPE '\\' OR customName LIKE :query ESCAPE '\\' OR artist LIKE :query ESCAPE '\\' OR album LIKE :query ESCAPE '\\' OR genre LIKE :query ESCAPE '\\' OR folder LIKE :query ESCAPE '\\' OR tags LIKE :query ESCAPE '\\' OR fileName LIKE :query ESCAPE '\\') ORDER BY CASE WHEN :sort = 'recent' THEN lastPlayed WHEN :sort = 'added' THEN addedAt ELSE 0 END DESC, title COLLATE NOCASE")
+    suspend fun playbackQueue(query: String, source: String, favorite: Boolean, folder: String, artist: String, album: String, genre: String, sort: String): List<QueueRecord>
     @Query("SELECT * FROM tracks WHERE hidden = 0 AND available = 1 ORDER BY lastPlayed DESC, addedAt DESC LIMIT 20")
     fun home(): Flow<List<Track>>
     @Query("SELECT * FROM tracks WHERE hidden = 0 AND available = 1 AND favorite = 1 ORDER BY title LIMIT 20")
@@ -104,7 +115,7 @@ interface LibraryDao {
         clearPlaylist(id); tracks.forEachIndexed { i, t -> entry(PlaylistEntry(id, t, i)) }
     }
     @Query("SELECT * FROM tracks WHERE album = :album AND hidden = 0 AND available = 1 ORDER BY title") suspend fun albumTracks(album: String): List<Track>
-    @Query("SELECT tracks.* FROM tracks INNER JOIN queue ON tracks.id = trackId WHERE available = 1 AND hidden = 0 ORDER BY position") suspend fun savedQueue(): List<Track>
+    @Query("SELECT tracks.id, uri, title, artist, album, durationMs, cover, customName, detectedOffsetMs, manualOffsetMs FROM tracks INNER JOIN queue ON tracks.id = trackId WHERE available = 1 AND hidden = 0 ORDER BY position") suspend fun savedQueue(): List<QueueRecord>
     @Query("DELETE FROM queue") suspend fun clearQueue()
     @Insert suspend fun queue(entries: List<QueueEntry>)
     @Transaction suspend fun saveQueue(ids: List<String>) { clearQueue(); queue(ids.mapIndexed { i, id -> QueueEntry(i, id) }) }

@@ -1,3 +1,4 @@
+@file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 package com.streamvault.ui
 
 import android.app.Application
@@ -54,6 +55,7 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
     val current = playback.map { it.currentId }.distinctUntilChanged().flatMapLatest { id ->
         if (id.isEmpty()) flowOf(null) else dao.observeTrack(id)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+    private var queueLoad: Job? = null
     private var controller: MediaController? = null
     private val future = MediaController.Builder(app, SessionToken(app, ComponentName(app, PlaybackService::class.java))).buildAsync()
     private val listener = object : Player.Listener { override fun onEvents(player: Player, events: Player.Events) { sync() } }
@@ -69,15 +71,27 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
         val c = controller ?: return
         playback.value = PlaybackState(c.currentMediaItem?.mediaId.orEmpty(), c.currentMediaItemIndex,
             c.isPlaying, c.currentPosition.coerceAtLeast(0), c.duration.takeIf { it > 0 } ?: 0,
-            if (queueChanged) (0 until c.mediaItemCount).map { i -> val m = c.getMediaItemAt(i); QueueTrack(m.mediaId, m.mediaMetadata.title.toString(), m.mediaMetadata.artist.toString(), m.mediaMetadata.artworkUri?.toString(), m.durationMs) } else playback.value.queue,
+            if (queueChanged) (0 until c.mediaItemCount).map { i -> val m = c.getMediaItemAt(i); QueueTrack(m.mediaId, m.mediaMetadata.title.toString(), m.mediaMetadata.artist.toString(), m.mediaMetadata.artworkUri?.toString(), m.durationMs, m.mediaMetadata.albumTitle?.toString().orEmpty()) } else playback.value.queue,
             c.playbackState == Player.STATE_BUFFERING)
     }
     fun play(track: Track, context: List<Track> = listOf(track), original: Boolean = false) {
         val c = controller ?: return notify("El reproductor se está conectando…")
-        val list = context.ifEmpty { listOf(track) }
+        val list = if (context.any { it.id == track.id }) context else listOf(track)
         val index = list.indexOfFirst { it.id == track.id }.coerceAtLeast(0)
         c.setMediaItems(list.map { it.mediaItem(settings.value, original && it.id == track.id) }, index, if (original) 0 else track.offset(settings.value.detectSilence))
         c.prepare(); c.play()
+    }
+    fun playLibrary(track: Track) {
+        queueLoad?.cancel()
+        val q = searchPattern(query.value)
+        val f = filter.value
+        queueLoad = viewModelScope.launch {
+            try {
+                val queue = dao.playbackQueue(q, f.source, f.favorite, f.folder, f.artist, f.album, f.genre, f.sort)
+                play(track, queue.map { it.toTrack() })
+            } catch (e: CancellationException) { throw e }
+            catch (e: Exception) { notify("No se pudo cargar la cola: ${e.localizedMessage}") }
+        }
     }
     fun toggle() { controller?.let { if (it.playWhenReady) it.pause() else { if (it.playbackState == Player.STATE_IDLE) it.prepare(); it.play() } } }
     fun next() { controller?.seekToNextMediaItem() }
@@ -152,5 +166,5 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
 }
 
 data class LibraryFilter(val source: String = "", val favorite: Boolean = false, val folder: String = "", val artist: String = "", val album: String = "", val genre: String = "", val sort: String = "title")
-data class QueueTrack(val id: String, val title: String, val artist: String, val cover: String?, val duration: Long)
+data class QueueTrack(val id: String, val title: String, val artist: String, val cover: String?, val duration: Long, val album: String = "")
 data class PlaybackState(val currentId: String = "", val index: Int = 0, val playing: Boolean = false, val position: Long = 0, val duration: Long = 0, val queue: List<QueueTrack> = emptyList(), val buffering: Boolean = false)

@@ -56,7 +56,7 @@ fun ActionIcon(icon: ImageVector, label: String, onClick: () -> Unit, selected: 
 @Composable
 fun TrackRow(track: Track, playing: Boolean = false, onPlay: () -> Unit, onMenu: () -> Unit, trailing: (@Composable () -> Unit)? = null) {
     Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable(onClick = onPlay).padding(vertical = 9.dp, horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        Cover(track.id, track.displayName, track.cover, Modifier.size(54.dp), track.source == "whatsapp")
+        Cover(track.artworkKey, track.displayName, track.cover, Modifier.size(54.dp), track.source == "whatsapp")
         Spacer(Modifier.width(13.dp))
         Column(Modifier.weight(1f)) {
             Text(track.displayName, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Medium, color = if (playing) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)

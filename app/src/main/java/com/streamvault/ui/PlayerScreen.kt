@@ -39,7 +39,7 @@ import kotlinx.coroutines.withContext
 fun MiniPlayer(track: Track, state: PlaybackState, toggle: () -> Unit, next: () -> Unit, expand: () -> Unit) {
     Column(Modifier.padding(horizontal = 10.dp).clip(RoundedCornerShape(15.dp)).background(MaterialTheme.colorScheme.surfaceVariant).clickable(onClick = expand)) {
         Row(Modifier.padding(start = 9.dp, top = 8.dp, bottom = 7.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Cover(track.id, track.displayName, track.cover, Modifier.size(43.dp), track.source == "whatsapp")
+            Cover(track.artworkKey, track.displayName, track.cover, Modifier.size(43.dp), track.source == "whatsapp")
             Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
                 Text(track.displayName, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                 Text(track.artist, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -91,7 +91,7 @@ fun FullPlayer(vm: LibraryViewModel, track: Track, state: PlaybackState, dismiss
                 BoxWithConstraints(Modifier.weight(1f)) {
                     val landscape = maxWidth > maxHeight * 1.25f
                     val artwork: @Composable () -> Unit = {
-                        Cover(track.id, track.displayName, track.cover, Modifier.padding(24.dp).fillMaxWidth().aspectRatio(1f).pointerInput(Unit) {
+                        Cover(track.artworkKey, track.displayName, track.cover, Modifier.padding(24.dp).fillMaxWidth().aspectRatio(1f).pointerInput(Unit) {
                             var distance = 0f
                             detectVerticalDragGestures(onDragStart = { distance = 0f }, onDragEnd = { if (distance < -70) queue = true }) { change, amount -> change.consume(); distance += amount }
                         }, track.source == "whatsapp")
@@ -164,7 +164,7 @@ private fun QueueSheet(vm: LibraryViewModel, state: PlaybackState, dismiss: () -
                     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(if (index == state.index) MaterialTheme.colorScheme.primaryContainer else Color.Transparent).padding(horizontal = 8.dp)) {
                         if (index == state.index) Text("AHORA SUENA", fontSize = 9.sp, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 10.dp))
                         Row(Modifier.fillMaxWidth().clickable { vm.queueSelect(index) }.padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Cover(item.id, item.title, item.cover, Modifier.size(46.dp))
+                            Cover("${item.title}|${item.artist}|${item.album}", item.title, item.cover, Modifier.size(46.dp))
                             Column(Modifier.weight(1f).padding(horizontal = 12.dp)) { Text(item.title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 14.sp); Text(item.artist, maxLines = 1, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                             Text(time(item.duration), fontSize = 11.sp)
                         }

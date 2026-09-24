@@ -44,10 +44,12 @@ class PlaybackService : MediaSessionService() {
             val queue = app.library.savedQueue()
             if (active.mediaItemCount == 0 && queue.isNotEmpty()) {
                 val (index, position) = app.preferences.position()
-                active.setMediaItems(queue.map { it.mediaItem(app.preferences.state.value) }, index.coerceIn(queue.indices), position)
+                active.setMediaItems(queue.map { it.toTrack().mediaItem(app.preferences.state.value) }, index.coerceIn(queue.indices), position)
                 active.prepare() // Restore paused. Never surprise the user on boot/open.
             }
             restoring = false
+            val ids = (0 until active.mediaItemCount).map { active.getMediaItemAt(it).mediaId }
+            queueMutex.withLock { app.library.saveQueue(ids) }
         }
         scope.launch {
             app.preferences.state.collect { settings ->
