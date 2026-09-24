@@ -60,7 +60,12 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
     private var controller: MediaController? = null
     private val controllerReady = CompletableDeferred<MediaController>()
     private val future = MediaController.Builder(app, SessionToken(app, ComponentName(app, PlaybackService::class.java))).buildAsync()
-    private val listener = object : Player.Listener { override fun onEvents(player: Player, events: Player.Events) { sync() } }
+    private val listener = object : Player.Listener {
+        override fun onEvents(player: Player, events: Player.Events) {
+            // Crossfade emits volume events every 40 ms. Do not rebuild a 10k-item queue for each gain update.
+            sync(events.contains(Player.EVENT_TIMELINE_CHANGED) || events.contains(Player.EVENT_MEDIA_METADATA_CHANGED))
+        }
+    }
     init {
         future.addListener({
             runCatching { future.get() }.onSuccess { c -> controller = c; c.addListener(listener); sync(); controllerReady.complete(c) }
