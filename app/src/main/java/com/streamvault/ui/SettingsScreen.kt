@@ -17,6 +17,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.work.WorkInfo
+import com.streamvault.BuildConfig
+import com.streamvault.R
 import com.streamvault.analysis.AnalysisWorker
 import com.streamvault.playback.PlaybackEvents
 import com.streamvault.scanner.ScanWorker

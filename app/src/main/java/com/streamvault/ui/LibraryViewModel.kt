@@ -12,6 +12,7 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import androidx.paging.*
 import androidx.work.WorkManager
+import com.streamvault.BuildConfig
 import com.streamvault.LuminaApp
 import com.streamvault.analysis.SilenceAnalyzer
 import com.streamvault.data.*
