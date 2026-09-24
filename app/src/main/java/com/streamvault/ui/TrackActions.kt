@@ -61,6 +61,7 @@ fun TrackActions(vm: LibraryViewModel, initialTrack: Track, dismiss: () -> Unit)
                 Triple("Cambiar portada", Icons.Rounded.Image) { image.launch(arrayOf("image/*")) },
                 Triple("Inicio y transición / crossfade", Icons.Rounded.GraphicEq) { action = "offset" },
                 Triple("Quitar voz · requiere modelo", Icons.Rounded.MicOff) { action = "separate" },
+                Triple("Buscar en YouTube", Icons.Rounded.PlayCircle) { runAndClose { YouTubeLinks.open(context, YouTubeLinks.query(track.title, track.artist)) } },
                 Triple("Compartir", Icons.Rounded.Share) {
                     runCatching {
                         val original = Uri.parse(track.uri)
@@ -137,7 +138,7 @@ private fun EditTrack(track: Track, dismiss: () -> Unit, save: (String, String, 
     var genre by remember { mutableStateOf(track.genre) }; var notes by remember { mutableStateOf(track.notes) }; var tags by remember { mutableStateOf(track.tags) }
     AlertDialog(onDismissRequest = dismiss, title = { Text("Hazlo tuyo") }, text = {
         Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("Solo se cambia la información en Lúmina. El archivo original permanece intacto.", style = MaterialTheme.typography.bodySmall)
+            Text("Solo se cambia la información en la app. El archivo original permanece intacto.", style = MaterialTheme.typography.bodySmall)
             OutlinedTextField(name, { name = it }, label = { Text("Nombre personalizado") })
             OutlinedTextField(title, { title = it }, label = { Text("Título") })
             OutlinedTextField(artist, { artist = it }, label = { Text("Artista") })

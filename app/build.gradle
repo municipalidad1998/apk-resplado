@@ -10,8 +10,8 @@ android {
         applicationId 'com.streamvault'
         minSdk 26
         targetSdk 35
-        versionCode 3
-        versionName '2.1.0'
+        versionCode 4
+        versionName '2.2.0'
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
         javaCompileOptions { annotationProcessorOptions { arguments += ['room.schemaLocation': "$projectDir/schemas".toString()] } }
     }
@@ -19,7 +19,24 @@ android {
     composeOptions { kotlinCompilerExtensionVersion '1.5.15' }
     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = '17' }
-    buildTypes { release { minifyEnabled false; proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro' } }
+    // A stable key is what lets a new APK install over the previous one without uninstalling.
+    // The CI writes this file; local builds without it simply stay unsigned with the debug key.
+    signingConfigs {
+        lumina {
+            storeFile file('keystore/lumina.jks')
+            storePassword 'lumina-denilson'
+            keyAlias 'denilson'
+            keyPassword 'lumina-denilson'
+        }
+    }
+    buildTypes {
+        debug { if (file('keystore/lumina.jks').exists()) signingConfig signingConfigs.lumina }
+        release {
+            if (file('keystore/lumina.jks').exists()) signingConfig signingConfigs.lumina
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
     packaging { resources.excludes += '/META-INF/{AL2.0,LGPL2.1}' }
     testOptions { unitTests.returnDefaultValues = true }
     lint { abortOnError true; checkReleaseBuilds true }

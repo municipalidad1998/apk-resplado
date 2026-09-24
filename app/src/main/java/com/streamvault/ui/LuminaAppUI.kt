@@ -12,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -24,21 +25,24 @@ fun LuminaAppUI(vm: LibraryViewModel, requestPermission: () -> Unit, chooseFolde
     val current by vm.current.collectAsStateWithLifecycle()
     val analyzing by vm.analyzing.collectAsStateWithLifecycle()
     val message by vm.message.collectAsStateWithLifecycle()
+    val update by vm.updateState.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     var page by rememberSaveable { mutableIntStateOf(0) }
     var fullPlayer by rememberSaveable { mutableStateOf(false) }
     var menuTrack by remember { mutableStateOf<Track?>(null) }
     LaunchedEffect(message, fullPlayer, menuTrack) { if (!fullPlayer && menuTrack == null) message?.let { snackbar.showSnackbar(it); vm.message.value = null } }
+    // An automatic check never interrupts playback: it only tells you the new version exists.
+    LaunchedEffect(update) { if (update is UpdateState.Available && !fullPlayer && menuTrack == null) snackbar.showSnackbar("Nueva versión ${(update as UpdateState.Available).info.version}: abre Ajustes → Actualizaciones") }
     fun library(filter: LibraryFilter = LibraryFilter()) { vm.filter.value = filter; vm.query.value = ""; page = 1 }
     val labels = listOf("Inicio", "Biblioteca", "Playlists", "Buscar", "Ajustes")
     val icons = listOf(Icons.Rounded.Home, Icons.Rounded.LibraryMusic, Icons.Rounded.QueueMusic, Icons.Rounded.Search, Icons.Rounded.Tune)
-    LuminaTheme(settings.theme) {
+    LuminaTheme(settings.theme, settings.dynamicColor) {
         Surface(Modifier.fillMaxSize()) {
             BoxWithConstraints {
                 val wide = maxWidth >= 720.dp
                 Row(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))) {
                     if (wide) NavigationRail(containerColor = MaterialTheme.colorScheme.background) {
-                        Spacer(Modifier.height(28.dp)); Icon(Icons.Rounded.GraphicEq, "Lúmina", tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.height(36.dp))
+                        Spacer(Modifier.height(28.dp)); Icon(Icons.Rounded.GraphicEq, "Reproductor de música Denilson", tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.height(36.dp))
                         labels.forEachIndexed { i, label -> NavigationRailItem(selected = page == i, onClick = { page = i; if (i == 3) vm.filter.value = LibraryFilter() }, icon = { Icon(icons[i], label) }, label = { Text(label) }) }
                     }
                     Scaffold(modifier = Modifier.weight(1f), snackbarHost = { SnackbarHost(snackbar) }, bottomBar = {
@@ -66,8 +70,9 @@ fun LuminaAppUI(vm: LibraryViewModel, requestPermission: () -> Unit, chooseFolde
                 }
                 if (fullPlayer && current != null) FullPlayer(vm, current!!, playback, { fullPlayer = false }, { menuTrack = it }, { library(); fullPlayer = false })
                 menuTrack?.let { track -> TrackActions(vm, track, { menuTrack = null }) }
+                UpdateDialog(vm)
                 if (message != null && (fullPlayer || menuTrack != null)) AlertDialog(
-                    onDismissRequest = { vm.message.value = null }, title = { Text("Lúmina") },
+                    onDismissRequest = { vm.message.value = null }, title = { Text(stringResource(R.string.app_name)) },
                     text = { Text(message.orEmpty()) }, confirmButton = { TextButton(onClick = { vm.message.value = null }) { Text("Aceptar") } }
                 )
             }

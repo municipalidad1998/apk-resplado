@@ -7,7 +7,16 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <application android:name=".LuminaApp" android:allowBackup="false" android:icon="@drawable/ic_lumina" android:label="Lúmina" android:supportsRtl="true" android:theme="@style/Theme.Lumina">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+    </queries>
+    <application android:name=".LuminaApp" android:allowBackup="false" android:icon="@drawable/ic_lumina" android:label="@string/app_name" android:supportsRtl="true" android:theme="@style/Theme.Lumina">
         <activity android:name=".ui.MainActivity" android:exported="true" android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

@@ -70,7 +70,7 @@ class SeparationWorker(context: Context, params: WorkerParameters) : CoroutineWo
         val title = "${original.displayName} - $suffix"
         val uri = Uri.fromFile(exported).toString()
         app.library.insert(Track(hash, uri, "$title.$extension", title, artist = original.artist, album = original.album,
-            genre = original.genre, folder = "Lúmina/Procesados", durationMs = duration, size = exported.length(),
+            genre = original.genre, folder = "Denilson/Procesados", durationMs = duration, size = exported.length(),
             date = System.currentTimeMillis(), cover = original.cover, source = source))
         app.library.location(AudioLocation(uri, hash, "generated", exported.length(), exported.lastModified(), "generated"))
         return hash

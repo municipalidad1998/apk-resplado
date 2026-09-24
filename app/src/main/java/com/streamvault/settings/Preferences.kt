@@ -19,7 +19,9 @@ data class PlayerSettings(
     val fades: Boolean = true,
     val animations: Boolean = true,
     val largeCovers: Boolean = true,
-    val excludedFolders: String = ""
+    val excludedFolders: String = "",
+    val autoUpdate: Boolean = true,
+    val dynamicColor: Boolean = true
 ) { val analysisKey get() = "rms-v3:$thresholdDb:$minimumSilence" }
 
 class Preferences(context: Context) {
@@ -34,7 +36,9 @@ class Preferences(context: Context) {
         autoPlay = prefs.getBoolean("autoplay", true), shuffle = prefs.getBoolean("shuffle", false),
         repeat = prefs.getInt("repeat", 0), fades = prefs.getBoolean("fades", true),
         animations = prefs.getBoolean("animations", true), largeCovers = prefs.getBoolean("covers", true),
-        excludedFolders = prefs.getString("excluded", "")!!
+        excludedFolders = prefs.getString("excluded", "")!!,
+        autoUpdate = prefs.getBoolean("autoUpdate", true),
+        dynamicColor = prefs.getBoolean("dynamicColor", true)
     )
     fun update(change: (PlayerSettings) -> PlayerSettings) {
         val s = change(mutable.value)
@@ -42,12 +46,21 @@ class Preferences(context: Context) {
             .putBoolean("silence", s.detectSilence).putInt("threshold", s.thresholdDb).putInt("minimum", s.minimumSilence)
             .putBoolean("scan", s.autoScan).putBoolean("autoplay", s.autoPlay).putBoolean("shuffle", s.shuffle)
             .putInt("repeat", s.repeat).putBoolean("fades", s.fades).putBoolean("animations", s.animations)
-            .putBoolean("covers", s.largeCovers).putString("excluded", s.excludedFolders).apply()
+            .putBoolean("covers", s.largeCovers).putString("excluded", s.excludedFolders)
+            .putBoolean("autoUpdate", s.autoUpdate).putBoolean("dynamicColor", s.dynamicColor).apply()
         mutable.value = s
     }
     fun roots(): Set<String> = prefs.getStringSet("roots", emptySet())!!.toSet()
     fun addRoot(uri: String) { prefs.edit().putStringSet("roots", roots() + uri).apply() }
     fun removeRoot(uri: String) { prefs.edit().putStringSet("roots", roots() - uri).apply() }
+    var lastUpdateCheck: Long
+        get() = prefs.getLong("updateCheckAt", 0L)
+        set(value) { prefs.edit().putLong("updateCheckAt", value).apply() }
+
+    var skippedUpdate: String
+        get() = prefs.getString("skippedUpdate", "")!!
+        set(value) { prefs.edit().putString("skippedUpdate", value).apply() }
+
     fun savePosition(index: Int, position: Long) { prefs.edit().putInt("index", index).putLong("position", position).apply() }
     fun position() = prefs.getInt("index", 0) to prefs.getLong("position", 0)
 }

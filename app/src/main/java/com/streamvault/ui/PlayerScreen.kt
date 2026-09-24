@@ -38,7 +38,7 @@ import kotlinx.coroutines.withContext
 
 @Composable
 fun MiniPlayer(track: Track, state: PlaybackState, toggle: () -> Unit, next: () -> Unit, analyzing: Boolean = false, expand: () -> Unit) {
-    Column(Modifier.testTag("mini-player").padding(horizontal = 10.dp).clip(RoundedCornerShape(15.dp)).background(MaterialTheme.colorScheme.surfaceVariant).clickable(onClick = expand)) {
+    Column(Modifier.testTag("mini-player").padding(horizontal = 10.dp).clip(RoundedCornerShape(18.dp)).background(MaterialTheme.colorScheme.surfaceVariant).clickable(onClick = expand)) {
         Row(Modifier.padding(start = 9.dp, top = 8.dp, bottom = 7.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Cover(track.artworkKey, track.displayName, track.cover, Modifier.size(43.dp), track.source == "whatsapp")
             Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
@@ -149,6 +149,18 @@ fun FullPlayer(vm: LibraryViewModel, track: Track, state: PlaybackState, dismiss
                         Icon(Icons.Rounded.Tune, null, Modifier.size(18.dp))
                         Text("  Inicio y crossfade · ${track.crossfadeSeconds ?: settings.crossfade} s", maxLines = 1)
                     }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(onClick = { YouTubeLinks.open(context, YouTubeLinks.query(track.title, track.artist)) }, modifier = Modifier.weight(1f).testTag("youtube-button")) {
+                            Icon(Icons.Rounded.PlayCircle, null, Modifier.size(18.dp))
+                            Text("  YouTube", maxLines = 1)
+                        }
+                        OutlinedButton(onClick = { YouTubeLinks.open(context, YouTubeLinks.query(track.title, track.artist), music = true) }, modifier = Modifier.weight(1f).testTag("youtube-music-button")) {
+                            Icon(Icons.Rounded.Album, null, Modifier.size(18.dp))
+                            Text("  YouTube Music", maxLines = 1)
+                        }
+                    }
+                    Text("Se abre en la app oficial de YouTube. Esta app no bloquea anuncios ni reproduce YouTube en segundo plano: eso depende de YouTube Premium.",
+                        fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp))
                     FilledTonalButton(onClick = { queue = true }, modifier = Modifier.fillMaxWidth().testTag("open-queue")) {
                         Icon(Icons.Rounded.QueueMusic, null)
                         Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {

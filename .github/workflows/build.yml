@@ -22,6 +22,31 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           cache-read-only: false
+      - name: Firma estable para las actualizaciones
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          mkdir -p keystore
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            printf '%s' "$KEYSTORE_BASE64" | base64 -d > keystore/lumina.jks
+          elif [ ! -f keystore/lumina.jks ]; then
+            keytool -genkeypair -v -keystore keystore/lumina.jks -storetype JKS \
+              -storepass lumina-denilson -keypass lumina-denilson -alias denilson \
+              -keyalg RSA -keysize 2048 -validity 10950 \
+              -dname "CN=Reproductor de musica Denilson, OU=Musica, O=Denilson, C=GT"
+          fi
+          ls -l keystore
+      - name: Guardar la clave generada
+        if: github.event_name == 'push' && github.ref == 'refs/heads/arena/01a0d0df-apk-resplado'
+        run: |
+          if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then echo "Usando el keystore del secreto."; exit 0; fi
+          if git status --porcelain keystore/lumina.jks | grep -q .; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add keystore/lumina.jks
+            git commit -m "build: fijar clave de firma estable para las actualizaciones [skip ci]"
+            git push origin HEAD:arena/01a0d0df-apk-resplado
+          fi
       - name: Build and verify
         shell: bash
         run: |
@@ -121,20 +146,23 @@ jobs:
       - name: Name the installable APK
         run: |
           mkdir -p release
-          cp apks/app/app-debug.apk release/lumina-2.1.0-debug.apk
+          cp apks/app/app-debug.apk release/reproductor-denilson-2.2.0.apk
           ls -l release
       - uses: softprops/action-gh-release@v2
         with:
-          tag_name: v2.1.0
-          name: Lúmina 2.1.0 (debug)
+          tag_name: v2.2.0
+          name: Reproductor de música Denilson 2.2.0
           body: |
-            APK de depuración de Lúmina 2.1.0, generado y verificado por este flujo
-            (pruebas JVM, Lint y pruebas instrumentadas en Android 15).
+            APK generado y verificado por este flujo (pruebas JVM, Lint y pruebas
+            instrumentadas en Android 15). Mantiene la misma firma que la versión anterior,
+            así que se actualiza sin desinstalar y sin perder la biblioteca.
 
-            Instalación: descarga `lumina-2.1.0-debug.apk` y ábrelo en el teléfono
-            permitiendo "Instalar apps desconocidas" para el navegador o gestor de archivos.
-            Está firmado con la clave de depuración de este flujo; si tenías instalada una
-            compilación anterior firmada con otra clave, Android puede pedir desinstalarla
-            primero (haz respaldo antes).
-          files: release/lumina-2.1.0-debug.apk
+            Instalación: descarga `reproductor-denilson-2.2.0.apk` y ábrelo en el teléfono.
+            La primera vez, Android pedirá autorizar "Instalar apps desconocidas" para el
+            navegador o el gestor de archivos que uses. Después de instalar, la app misma
+            puede buscar e instalar las siguientes versiones desde Ajustes → Actualizaciones.
+
+            YouTube: el botón abre la búsqueda en la app oficial de YouTube. La app no bloquea
+            anuncios ni reproduce YouTube en segundo plano; eso depende de YouTube Premium.
+          files: release/reproductor-denilson-2.2.0.apk
           fail_on_unmatched_files: true

@@ -60,7 +60,7 @@ fun LibraryScreen(vm: LibraryViewModel, search: Boolean, permission: () -> Unit,
         LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 20.dp)) {
             if (songs.itemCount == 0 && songs.loadState.refresh !is LoadState.Loading) item {
                 if (count == 0) {
-                    EmptyState("Tu biblioteca empieza aquí", "Permite que Lúmina encuentre música, descargas y notas de voz. Para WhatsApp o una tarjeta SD puedes seleccionar una carpeta.", action = "Permitir acceso", onAction = permission)
+                    EmptyState("Tu biblioteca empieza aquí", "Permite que el reproductor encuentre música, descargas y notas de voz. Para WhatsApp o una tarjeta SD puedes seleccionar una carpeta.", action = "Permitir acceso", onAction = permission)
                     OutlinedButton(onClick = folder, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Rounded.CreateNewFolder, null); Spacer(Modifier.width(8.dp)); Text("Seleccionar carpeta") }
                 } else EmptyState("No encontramos esos sonidos", "Prueba otro título, artista, etiqueta o carpeta.", Icons.Rounded.SearchOff)
             }

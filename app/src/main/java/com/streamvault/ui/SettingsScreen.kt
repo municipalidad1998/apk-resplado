@@ -68,6 +68,7 @@ fun SettingsScreen(vm: LibraryViewModel, permission: () -> Unit, folder: () -> U
         item {
             SectionTitle("Apariencia")
             Setting("Tema", when (settings.theme) { "dark" -> "Oscuro"; "light" -> "Claro"; else -> "Automático según el sistema" }, { choose = "Tema" })
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) Toggle("Colores del sistema", "Adaptar la paleta al fondo de pantalla de Android 12+", settings.dynamicColor) { value -> update { it.copy(dynamicColor = value) } }
             Toggle("Portadas grandes", "Más espacio para el arte de tu música", settings.largeCovers) { value -> update { it.copy(largeCovers = value) } }
             Toggle("Transiciones suaves", "Animar los cambios de pantalla", settings.animations) { value -> update { it.copy(animations = value) } }
         }
@@ -83,8 +84,9 @@ fun SettingsScreen(vm: LibraryViewModel, permission: () -> Unit, folder: () -> U
                         .putExtra(AudioEffect.EXTRA_CONTENT_TYPE, AudioEffect.CONTENT_TYPE_MUSIC))
                 } catch (_: Exception) { vm.notify("Este dispositivo no ofrece un ecualizador compatible") }
             })
+            UpdateSection(vm)
             SectionTitle("Hecha para tu música")
-            Text("Lúmina 2.1\nLocal por naturaleza. Sin cuenta, sin anuncios y sin subir tus archivos. La separación de voz necesita un proveedor adicional.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 20.sp)
+            Text("${com.streamvault.BuildConfig.VERSION_NAME} · ${context.getString(R.string.app_name)}\nLocal por naturaleza. Sin cuenta, sin anuncios y sin subir tus archivos. La separación de voz necesita un proveedor adicional.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 20.sp)
         }
     }
     if (choose.isNotEmpty()) {
@@ -116,10 +118,10 @@ fun SettingsScreen(vm: LibraryViewModel, permission: () -> Unit, folder: () -> U
 }
 
 @Composable
-private fun Setting(title: String, subtitle: String, click: (() -> Unit)? = null) {
+fun Setting(title: String, subtitle: String, click: (() -> Unit)? = null) {
     ListItem(headlineContent = { Text(title) }, supportingContent = { Text(subtitle, fontSize = 12.sp) }, trailingContent = { if (click != null) Icon(Icons.Rounded.ChevronRight, null) }, modifier = if (click != null) Modifier.clickable(onClick = click) else Modifier)
 }
 @Composable
-private fun Toggle(title: String, subtitle: String, checked: Boolean, change: (Boolean) -> Unit) {
+fun Toggle(title: String, subtitle: String, checked: Boolean, change: (Boolean) -> Unit) {
     ListItem(headlineContent = { Text(title) }, supportingContent = { Text(subtitle, fontSize = 12.sp) }, trailingContent = { Switch(checked, change) }, modifier = Modifier.clickable { change(!checked) })
 }

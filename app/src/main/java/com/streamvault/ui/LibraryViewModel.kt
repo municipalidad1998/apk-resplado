@@ -17,6 +17,9 @@ import com.streamvault.analysis.SilenceAnalyzer
 import com.streamvault.data.*
 import com.streamvault.playback.*
 import com.streamvault.scanner.ScanWorker
+import com.streamvault.update.ReleaseInfo
+import com.streamvault.update.UpdateManager
+import com.streamvault.update.UpdateParser
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import java.util.UUID
@@ -49,6 +52,8 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val message = MutableStateFlow<String?>(null)
     val busy = MutableStateFlow(false)
+    val updateState = MutableStateFlow<UpdateState>(UpdateState.Idle)
+    private val updates = UpdateManager(application)
     val roots = MutableStateFlow(app.preferences.roots().toList())
     val playback = MutableStateFlow(PlaybackState())
     val mixing = PlaybackEvents.mixing
@@ -208,9 +213,72 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
         runCatching { app.contentResolver.releasePersistableUriPermission(Uri.parse(uri), android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION) }
         dao.forgetRoot(uri); dao.reconcile(); roots.value = app.preferences.roots().toList()
     }
+    /** Checks GitHub Releases. Automatic checks stay quiet unless a newer build exists. */
+    fun checkUpdates(manual: Boolean = true) {
+        if (updateState.value == UpdateState.Checking || updateState.value is UpdateState.Downloading) return
+        val now = System.currentTimeMillis()
+        if (!manual && (!app.preferences.state.value.autoUpdate || now - app.preferences.lastUpdateCheck < UPDATE_INTERVAL_MS)) return
+        viewModelScope.launch {
+            updateState.value = UpdateState.Checking
+            app.preferences.lastUpdateCheck = System.currentTimeMillis()
+            val info = updates.latest()
+            if (info == null) {
+                updateState.value = if (manual) UpdateState.Failed("No se pudo consultar GitHub. Revisa tu conexión e inténtalo otra vez.") else UpdateState.Idle
+                return@launch
+            }
+            val current = BuildConfig.VERSION_NAME
+            updateState.value = when {
+                !UpdateParser.isNewer(info.version, current) -> if (manual) UpdateState.UpToDate(current) else UpdateState.Idle
+                info.tag == app.preferences.skippedUpdate && !manual -> UpdateState.Idle
+                else -> UpdateState.Available(info)
+            }
+        }
+    }
+
+    fun installUpdate(info: ReleaseInfo) {
+        if (updateState.value is UpdateState.Downloading) return
+        viewModelScope.launch {
+            updateState.value = UpdateState.Downloading(0)
+            runCatching { updates.download(info) { percent -> updateState.value = UpdateState.Downloading(percent) } }
+                .onSuccess { file ->
+                    if (updates.canInstall()) {
+                        updateState.value = UpdateState.Idle
+                        runCatching { updates.install(file) }
+                            .onFailure { updateState.value = UpdateState.Failed("No se pudo abrir el instalador de Android: ${it.localizedMessage ?: "error desconocido"}") }
+                    } else {
+                        updateState.value = UpdateState.NeedsInstallPermission
+                        updates.openInstallPermission()
+                    }
+                }
+                .onFailure { error -> updateState.value = UpdateState.Failed(error.localizedMessage ?: "No se pudo descargar la actualización") }
+        }
+    }
+
+    fun retryPendingInstall() {
+        val file = updates.pending() ?: return
+        if (updates.canInstall()) runCatching { updates.install(file) }
+            .onFailure { notify("No se pudo abrir el instalador de Android") } else updates.openInstallPermission()
+    }
+
+    fun skipUpdate(info: ReleaseInfo) { app.preferences.skippedUpdate = info.tag; updateState.value = UpdateState.Idle }
+
+    fun dismissUpdate() { updateState.value = UpdateState.Idle }
+
     fun notify(text: String) { message.value = text }
     fun task(block: suspend () -> Unit) { viewModelScope.launch { try { block() } catch (e: CancellationException) { throw e } catch (e: Exception) { notify(e.localizedMessage ?: "Ocurrió un error") } } }
     override fun onCleared() { controller?.removeListener(listener); MediaController.releaseFuture(future); super.onCleared() }
+}
+
+private const val UPDATE_INTERVAL_MS = 6 * 60 * 60 * 1000L
+
+sealed interface UpdateState {
+    data object Idle : UpdateState
+    data object Checking : UpdateState
+    data class Available(val info: ReleaseInfo) : UpdateState
+    data class Downloading(val percent: Int) : UpdateState
+    data class UpToDate(val version: String) : UpdateState
+    data class Failed(val reason: String) : UpdateState
+    data object NeedsInstallPermission : UpdateState
 }
 
 data class LibraryFilter(val source: String = "", val favorite: Boolean = false, val folder: String = "", val artist: String = "", val album: String = "", val genre: String = "", val sort: String = "title")

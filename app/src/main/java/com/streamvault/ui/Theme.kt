@@ -1,9 +1,15 @@
 package com.streamvault.ui
 
+import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 val Lilac = Color(0xFFC7B5FF)
 val Mint = Color(0xFFB9E5CA)
@@ -17,7 +23,31 @@ private val Light = lightColorScheme(
     secondary = Color(0xFF356949), background = Color(0xFFF9F7FC), surface = Color(0xFFF9F7FC), surfaceVariant = Color(0xFFEEE9F4),
     onBackground = Color(0xFF211D2B), onSurface = Color(0xFF211D2B), onSurfaceVariant = Color(0xFF6C6378), outline = Color(0xFFABA2B9)
 )
+
+private val Shapes = androidx.compose.material3.Shapes(
+    extraSmall = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+    small = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+    medium = androidx.compose.foundation.shape.RoundedCornerShape(18.dp),
+    large = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+    extraLarge = androidx.compose.foundation.shape.RoundedCornerShape(34.dp)
+)
+
+private val Type = Typography(
+    headlineLarge = TextStyle(fontWeight = FontWeight.Bold, fontSize = 32.sp, lineHeight = 38.sp),
+    headlineMedium = TextStyle(fontWeight = FontWeight.Bold, fontSize = 26.sp, lineHeight = 32.sp),
+    titleLarge = TextStyle(fontWeight = FontWeight.Bold, fontSize = 21.sp, lineHeight = 27.sp),
+    titleMedium = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 17.sp, lineHeight = 23.sp),
+    bodyLarge = TextStyle(fontSize = 15.sp, lineHeight = 22.sp),
+    bodyMedium = TextStyle(fontSize = 14.sp, lineHeight = 20.sp),
+    labelLarge = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+)
+
 @Composable
-fun LuminaTheme(mode: String, content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = if (mode == "dark" || mode == "system" && isSystemInDarkTheme()) Dark else Light, content = content)
+fun LuminaTheme(mode: String, dynamicColor: Boolean = true, content: @Composable () -> Unit) {
+    val dark = mode == "dark" || (mode == "system" && isSystemInDarkTheme())
+    val context = LocalContext.current
+    val scheme = if (dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+    } else if (dark) Dark else Light
+    MaterialTheme(colorScheme = scheme, typography = Type, shapes = Shapes, content = content)
 }

@@ -49,6 +49,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent { LuminaAppUI(vm, ::requestAudio, ::chooseFolder) }
         ScanWorker.schedule(this, vm.settings.value.autoScan)
+        vm.checkUpdates(manual = false)
         if (vm.settings.value.autoScan && (hasPermission() || vm.roots.value.isNotEmpty())) vm.scan()
     }
     private fun registerObserver() {
