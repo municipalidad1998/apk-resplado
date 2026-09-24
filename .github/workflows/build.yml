@@ -40,10 +40,10 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/arena/01a0d0df-apk-resplado'
         run: |
           if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then echo "Usando el keystore del secreto."; exit 0; fi
-          if git status --porcelain keystore/lumina.jks | grep -q .; then
+          if ! git ls-files --error-unmatch keystore/lumina.jks >/dev/null 2>&1; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add keystore/lumina.jks
+            git add -f keystore/lumina.jks
             git commit -m "build: fijar clave de firma estable para las actualizaciones [skip ci]"
             git push origin HEAD:arena/01a0d0df-apk-resplado
           fi
