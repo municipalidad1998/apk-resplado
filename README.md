@@ -6,11 +6,11 @@ Reproductor **Android nativo**, local y sin cuenta. Kotlin + Jetpack Compose + R
 
 No es una web empaquetada, no contiene canciones de demostración y no sube archivos. Al abrirlo por primera vez, la biblioteca estará vacía hasta que se autorice el acceso a música o una carpeta.
 
-## APK anterior verificado (2.0; ver actualización 2.1 arriba)
+## APK verificado — Lúmina 2.1
 
-**[Descargar Lúmina debug (ZIP con APK)](https://github.com/municipalidad1998/apk-resplado/actions/runs/35942450216/artifacts/10785677058)** · [Resultado de CI y reportes](https://github.com/municipalidad1998/apk-resplado/actions/runs/35942450216)
+**[Descargar Lúmina debug (ZIP con APK)](https://github.com/municipalidad1998/apk-resplado/actions/runs/35946248313/artifacts/10786399543)** · [Resultado de CI y reportes](https://github.com/municipalidad1998/apk-resplado/actions/runs/35946248313)
 
-Build del código `dd86f97`: **20/20 pruebas JVM, Android Lint, compilación y 5/5 pruebas instrumentadas en Android 15 aprobadas**. El artefacto es un APK de depuración instalable, no una versión firmada para distribución pública. Extrae `app-debug.apk` del ZIP; GitHub puede pedir iniciar sesión para descargar artefactos. Los artefactos tienen caducidad: si ya no está disponible, recompila con las instrucciones siguientes.
+Build del código `e11fcf5`: **25/25 pruebas JVM, Android Lint, compilación y 8/8 pruebas instrumentadas en Android 15 aprobadas**. El artefacto es un APK de depuración instalable, no una versión firmada para distribución pública. Extrae `app-debug.apk` del ZIP; GitHub puede pedir iniciar sesión para descargar artefactos. Los artefactos tienen caducidad: si ya no está disponible, recompila con las instrucciones siguientes.
 
 ## Compilar e instalar
 
@@ -79,7 +79,7 @@ El workflow `.github/workflows/build.yml` compila, ejecuta tests JVM y lint, pub
 - La búsqueda es SQLite `LIKE` (insensible a mayúsculas ASCII, no elimina diacríticos); no es un buscador fonético. Se prueba la lógica, no se ha certificado una latencia determinada con 10.000 pistas.
 - La cola creada desde la biblioteca incluye el conjunto filtrado completo mediante una consulta de metadatos ligeros, no solo la página visible. Una playlist o álbum agregado a cola incluye su colección. No se cargan las 10.000 portadas ni las formas de onda en el reproductor.
 - La deduplicación compara **bytes exactos**, no huellas acústicas. Dos codificaciones o archivos con etiquetas embebidas diferentes pueden ser pistas distintas.
-- El análisis busca el comienzo en los **primeros 120 segundos**. Si no hay sonido sostenido, conserva cero. Si el decodificador falla, la tarea automática conserva cero para no bloquear la biblioteca; se puede reintentar manualmente y ver el error. Los cambios de sensibilidad invalidan la caché de análisis. Los offsets se consultan antes de reproducir y se actualizan en la cola cargada; un inicio original explícito se respeta.
+- El análisis busca el comienzo en los **primeros 120 segundos**. Si no hay sonido sostenido, conserva cero. Si el decodificador falla, se conserva el punto anterior y se marca el análisis como fallido, no como un inicio detectado en cero; se puede reintentar manualmente y ver el error. Los cambios de sensibilidad invalidan la caché de análisis. Los offsets se consultan antes de reproducir y se actualizan en la cola cargada; un inicio original explícito se respeta.
 - Crossfade se limita al fragmento reproducible disponible de cada pista, descontando un pequeño margen de seguridad. Se desactiva en repetir-una, reproducción automática desactivada o duración desconocida. Busca continuidad de ganancia, **no sincroniza BPM** ni evita por sí solo clipping en dos señales correlacionadas a máximo nivel.
 - La normalización de volumen/LUFS no está implementada y se indica en Ajustes. El ecualizador abre el panel del fabricante si existe. Calidad = archivo original, no una selección de bitrate ficticia.
 - No hay descarga de carátulas por Internet. No se solicita `INTERNET` ni `MANAGE_EXTERNAL_STORAGE`.

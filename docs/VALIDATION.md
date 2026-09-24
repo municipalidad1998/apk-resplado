@@ -4,27 +4,27 @@
 
 **24 de septiembre de 2026 — CI aprobado.**
 
-Run: [35942450216](https://github.com/municipalidad1998/apk-resplado/actions/runs/35942450216)
-Código probado: `dd86f97c049215bfceca757e64bd14f61b49cf22`
+Run 2.1: [35946248313](https://github.com/municipalidad1998/apk-resplado/actions/runs/35946248313)
+Código probado: `e11fcf5138d63a2508a0b11ab2b348042a7e0ba8`
 Los cambios posteriores a ese commit en esta entrega son únicamente documentación de resultados.
 
 | Comprobación | Resultado |
 |---|---|
-| `testDebugUnitTest` | **20 aprobadas; 0 fallos, 0 errores, 0 omitidas** |
+| `testDebugUnitTest` | **25 aprobadas; 0 fallos, 0 errores, 0 omitidas** |
 | `lintDebug` | **Aprobado**, sin errores bloqueantes |
 | `assembleDebug` | **APK generado** |
 | `assembleDebugAndroidTest` | **APK de tests generado** |
-| Instrumentación Android 15 / API 35 | **5 pruebas aprobadas** |
+| Instrumentación Android 15 / API 35 | **8 pruebas aprobadas** |
 | XML de manifiesto/recursos y archivo Gradle Wrapper | Validación estructural local aprobada |
 | `git diff --check` | Sin errores de whitespace |
 
-**[APK debug descargable](https://github.com/municipalidad1998/apk-resplado/actions/runs/35942450216/artifacts/10785677058)**. Los artefactos `lumina-build-reports` y `lumina-device-reports` del mismo run contienen resultados y logcat del emulador. El job de dispositivo instala los mismos APK que produce el job de compilación; no recompila una variante diferente.
+**[APK debug descargable](https://github.com/municipalidad1998/apk-resplado/actions/runs/35946248313/artifacts/10786399543)**. Los artefactos `lumina-build-reports` y `lumina-device-reports` del mismo run contienen resultados y logcat del emulador. El job de dispositivo instala los mismos APK que produce el job de compilación; no recompila una variante diferente.
 
 ### Alcance y correcciones durante la verificación
 
-El entorno de edición carece de Java, SDK/emulador Android y acceso directo a Google Maven, así que la compilación y los tests Android se ejecutaron realmente en CI. El primer intento de preparación del SDK falló antes de compilar; se utilizó el SDK preinstalado del runner. Durante las pruebas se corrigieron dos problemas de fixtures/selectores: la diferencia entre URI alias `external` y volumen canónico `external_primary`, y un selector de texto que coincidía tanto con una fila de ajustes como con una opción de diálogo. La suite se repitió completa después de las correcciones y terminó en verde.
+El entorno de edición carece de Java, SDK/emulador Android y acceso directo a Google Maven, así que la compilación y los tests Android se ejecutaron realmente en CI. El primer intento de preparación del SDK falló antes de compilar; se utilizó el SDK preinstalado del runner. Durante las pruebas se corrigieron dos problemas de fixtures/selectores: la diferencia entre URI alias `external` y volumen canónico `external_primary`, y un selector de texto que coincidía tanto con una fila de ajustes como con una opción de diálogo. La suite original se repitió completa después de esas correcciones y terminó en verde. En 2.1, los reportes del usuario motivaron tres regresiones nuevas: se comprobó un fallo real al volver de la cola al reproductor y se eliminó la ventana Dialog anidada del reproductor, manteniéndolo dentro de la actividad. Se corrigió también el tipo de retorno de una prueba Kotlin/JUnit. La suite ampliada se ejecutó completa después de los cambios y terminó en verde.
 
-**No se ha validado físicamente** la escucha, Bluetooth, SD real ni el rendimiento con 10.000 archivos. Las cinco pruebas no certifican todos los teléfonos, códecs, permisos de fabricantes o situaciones de batería. Tampoco validan separación vocal real: no hay un modelo instalado. Queda la matriz manual siguiente antes de una distribución de producción.
+**No se ha validado físicamente** la escucha, Bluetooth, SD real ni el rendimiento con 10.000 archivos. Las ocho pruebas no certifican todos los teléfonos, códecs, permisos de fabricantes o situaciones de batería. Tampoco validan separación vocal real: no hay un modelo instalado. Queda la matriz manual siguiente antes de una distribución de producción.
 
 ## Tests JVM
 
@@ -44,6 +44,14 @@ El entorno de edición carece de Java, SDK/emulador Android y acceso directo a G
 4. MediaController/servicio real con dos WAV: reproduce, detecta mezcla, pasa la actividad a segundo plano, comprueba continuidad y transición, pausa y seek.
 
 `NavigationTests`: los cinco destinos, búsqueda, cambio de crossfade, creación/apertura/eliminación de una playlist y regreso a Inicio.
+
+`PlaybackRegressionTests` (2.1):
+
+1. Reproducir desde el menú con una pista sin analizar y once segundos de silencio; comprobar que suena después del silencio, que hay una cola real, que Siguiente/Anterior cambian de canto incluso después de cinco segundos y que un offset guardado se aplica sin reconstruir la cola. Abrir y cerrar A continuación, comprobando visibilidad y capturando pantallas.
+2. Reproducir un WAV de 128 segundos, fijar un final útil en 8 segundos y crossfade por pista de 2 segundos mientras suena (global desactivado), y comprobar mezcla/transición sin esperar los dos minutos restantes.
+3. Migrar una base estructuralmente v1 a v2 y verificar favoritos, inicio manual y playlist preservados.
+
+Tests JVM nuevos: formatos `00:11` y `0.11`, tiempos inválidos, final útil, crossfades largos sin el recorte a la mitad y límites de pistas cortas.
 
 ## Matriz manual antes de distribuir producción
 

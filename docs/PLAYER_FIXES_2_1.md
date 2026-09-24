@@ -1,5 +1,9 @@
 # Lúmina 2.1 — correcciones del reproductor
 
+**[Descargar APK debug 2.1](https://github.com/municipalidad1998/apk-resplado/actions/runs/35946248313/artifacts/10786399543)** · [Pruebas y reportes](https://github.com/municipalidad1998/apk-resplado/actions/runs/35946248313)
+
+Código verificado: `e11fcf5`. **25 pruebas unitarias y 8 pruebas instrumentadas en Android 15 aprobadas**, además de Lint y compilación. Las pruebas incluyen el inicio a 11 segundos, modificación de inicio en una cola ya cargada, anterior/siguiente, abrir/cerrar la cola, salida manual antes de un final de dos minutos y migración de datos. El artefacto `lumina-device-reports` incluye capturas de la cola y del reproductor generadas durante la prueba. No se han probado tus archivos concretos ni tu teléfono físico.
+
 ## Qué cambia
 
 - **A continuación** es ahora un panel de altura acotada dentro de la misma ventana del reproductor, con lista desplazable, botones separados y una acción visible para volver. Se abre en la pista actual y conserva la reproducción.
