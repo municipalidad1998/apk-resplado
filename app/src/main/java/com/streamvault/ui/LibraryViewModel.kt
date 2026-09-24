@@ -1,0 +1,156 @@
+package com.streamvault.ui
+
+import android.app.Application
+import android.content.ComponentName
+import android.net.Uri
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import androidx.media3.common.*
+import androidx.media3.session.MediaController
+import androidx.media3.session.SessionToken
+import androidx.paging.*
+import androidx.work.WorkManager
+import com.streamvault.LuminaApp
+import com.streamvault.analysis.SilenceAnalyzer
+import com.streamvault.data.*
+import com.streamvault.playback.*
+import com.streamvault.scanner.ScanWorker
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.*
+import java.util.UUID
+
+@Suppress("OPT_IN_USAGE")
+@OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
+class LibraryViewModel(application: Application) : AndroidViewModel(application) {
+    val app = application as LuminaApp
+    private val dao = app.library
+    val settings = app.preferences.state
+    val home = dao.home().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val favorites = dao.favorites().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val whatsapp = dao.source("whatsapp").stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val instrumentals = dao.source("instrumental").stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val added = dao.added().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val count = dao.count().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+    val playlists = dao.playlists().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val folders = dao.folders().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val artists = dao.artists().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val albums = dao.albums().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val genres = dao.genres().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val query = MutableStateFlow("")
+    val filter = MutableStateFlow(LibraryFilter())
+    val tracks = combine(query.debounce(180), filter) { q, f -> q to f }.flatMapLatest { (q, f) ->
+        Pager(PagingConfig(pageSize = 60, prefetchDistance = 15, maxSize = 240)) {
+            dao.page(searchPattern(q), f.source, f.favorite, f.folder, f.artist, f.album, f.genre, f.sort)
+        }.flow
+    }.cachedIn(viewModelScope)
+    val scan = WorkManager.getInstance(app).getWorkInfosForUniqueWorkFlow("scan")
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val message = MutableStateFlow<String?>(null)
+    val busy = MutableStateFlow(false)
+    val roots = MutableStateFlow(app.preferences.roots().toList())
+    val playback = MutableStateFlow(PlaybackState())
+    val mixing = PlaybackEvents.mixing
+    val current = playback.map { it.currentId }.distinctUntilChanged().flatMapLatest { id ->
+        if (id.isEmpty()) flowOf(null) else dao.observeTrack(id)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+    private var controller: MediaController? = null
+    private val future = MediaController.Builder(app, SessionToken(app, ComponentName(app, PlaybackService::class.java))).buildAsync()
+    private val listener = object : Player.Listener { override fun onEvents(player: Player, events: Player.Events) { sync() } }
+    init {
+        future.addListener({
+            runCatching { future.get() }.onSuccess { c -> controller = c; c.addListener(listener); sync() }
+                .onFailure { message.value = "No se pudo conectar el reproductor: ${it.localizedMessage}" }
+        }, ContextCompat.getMainExecutor(app))
+        viewModelScope.launch { while (isActive) { sync(false); delay(250) } }
+        viewModelScope.launch { PlaybackEvents.error.collect { if (it != null) { message.value = it; PlaybackEvents.error.value = null } } }
+    }
+    private fun sync(queueChanged: Boolean = true) {
+        val c = controller ?: return
+        playback.value = PlaybackState(c.currentMediaItem?.mediaId.orEmpty(), c.currentMediaItemIndex,
+            c.isPlaying, c.currentPosition.coerceAtLeast(0), c.duration.takeIf { it > 0 } ?: 0,
+            if (queueChanged) (0 until c.mediaItemCount).map { i -> val m = c.getMediaItemAt(i); QueueTrack(m.mediaId, m.mediaMetadata.title.toString(), m.mediaMetadata.artist.toString(), m.mediaMetadata.artworkUri?.toString(), m.durationMs) } else playback.value.queue,
+            c.playbackState == Player.STATE_BUFFERING)
+    }
+    fun play(track: Track, context: List<Track> = listOf(track), original: Boolean = false) {
+        val c = controller ?: return notify("El reproductor se está conectando…")
+        val list = context.ifEmpty { listOf(track) }
+        val index = list.indexOfFirst { it.id == track.id }.coerceAtLeast(0)
+        c.setMediaItems(list.map { it.mediaItem(settings.value, original && it.id == track.id) }, index, if (original) 0 else track.offset(settings.value.detectSilence))
+        c.prepare(); c.play()
+    }
+    fun toggle() { controller?.let { if (it.playWhenReady) it.pause() else { if (it.playbackState == Player.STATE_IDLE) it.prepare(); it.play() } } }
+    fun next() { controller?.seekToNextMediaItem() }
+    fun previous() { controller?.let { if (it.currentPosition > 3000) it.seekTo(it.currentMediaItem?.offsetMs ?: 0) else it.seekToPreviousMediaItem() } }
+    fun seek(position: Long) { controller?.seekTo(position.coerceIn(0, playback.value.duration)) }
+    fun skip(direction: Int) = seek(MixMath.seek(playback.value.position, direction * settings.value.skipSeconds * 1000L, playback.value.duration))
+    fun enqueue(track: Track, next: Boolean = false) {
+        val c = controller ?: return
+        if (next) c.addMediaItem((c.currentMediaItemIndex + 1).coerceIn(0, c.mediaItemCount), track.mediaItem(settings.value)) else c.addMediaItem(track.mediaItem(settings.value))
+        if (c.playbackState == Player.STATE_IDLE) c.prepare()
+        notify(if (next) "Se reproducirá después" else "Agregada a la cola")
+    }
+    fun queueSelect(index: Int) { controller?.let { it.seekTo(index, it.getMediaItemAt(index).offsetMs); it.play() } }
+    fun queueRemove(index: Int) { controller?.let { if (index in 0 until it.mediaItemCount) it.removeMediaItem(index) } }
+    fun queueMove(from: Int, to: Int) { controller?.let { if (from in 0 until it.mediaItemCount && to in 0 until it.mediaItemCount) it.moveMediaItem(from, to) } }
+    fun favorite(track: Track) = task { dao.favorite(track.id) }
+    fun hide(track: Track) = task {
+        dao.hide(track.id)
+        controller?.let { c -> (c.mediaItemCount - 1 downTo 0).filter { c.getMediaItemAt(it).mediaId == track.id }.forEach(c::removeMediaItem) }
+        notify("Eliminada de la biblioteca. El archivo original sigue intacto.")
+    }
+    fun edit(track: Track, name: String, title: String, artist: String, album: String, genre: String, notes: String, tags: String) = task {
+        val latest = dao.track(track.id) ?: return@task
+        dao.update(latest.copy(customName = name.trim(), title = title.ifBlank { latest.title }, artist = artist.ifBlank { "Artista desconocido" },
+            album = album.ifBlank { "Sin álbum" }, genre = genre.ifBlank { "Sin género" }, notes = notes, tags = tags))
+        notify("Información guardada sin modificar el archivo")
+    }
+    fun cover(track: Track, uri: Uri) = task {
+        val cover = withContext(Dispatchers.IO) { app.artwork.import(track.id, uri) } ?: error("La imagen no es compatible")
+        dao.track(track.id)?.let { dao.update(it.copy(cover = cover)) }
+    }
+    fun analyze(track: Track) = task {
+        busy.value = true
+        try {
+            val result = SilenceAnalyzer(app).analyze(track.uri, settings.value.thresholdDb, settings.value.minimumSilence)
+            dao.analysis(track.id, result.offsetMs, result.waveform, settings.value.analysisKey)
+            notify(if (result.foundSound) "Inicio detectado: ${"%.2f".format(result.offsetMs / 1000.0)} s" else "No se detectó sonido sostenido en los primeros 120 s. Se conserva el inicio original.")
+        } finally { busy.value = false }
+    }
+    fun offset(track: Track, seconds: String?) = task {
+        val value = seconds?.replace(',', '.')?.toDoubleOrNull()
+        if (seconds != null && (value == null || !value.isFinite() || value < 0 || value * 1000 >= track.durationMs)) error("Introduce un punto entre 0 y la duración del audio")
+        dao.manualOffset(track.id, value?.times(1000)?.toLong())
+        notify("Punto de inicio guardado; se aplicará al volver a cargar la pista")
+    }
+    fun createPlaylist(name: String, description: String, cover: String? = null) = task {
+        if (name.isBlank()) error("Escribe un nombre para la playlist")
+        dao.playlist(Playlist(UUID.randomUUID().toString(), name.trim(), description, cover))
+    }
+    fun updatePlaylist(playlist: Playlist) = task { dao.playlist(playlist) }
+    fun playlistCover(playlist: Playlist, uri: Uri) = task {
+        val cover = withContext(Dispatchers.IO) { app.artwork.import(playlist.id, uri) } ?: error("La imagen no es compatible")
+        dao.playlist(playlist.copy(cover = cover))
+    }
+    fun playlistTracks(id: String) = dao.playlistTracks(id)
+    fun addToPlaylist(track: Track, playlist: Playlist) = task { dao.addToPlaylist(playlist.id, track.id); notify("Agregada a ${playlist.name}") }
+    fun removeFromPlaylist(track: Track, playlist: Playlist) = task { dao.removeEntry(playlist.id, track.id) }
+    fun reorderPlaylist(playlist: Playlist, tracks: List<Track>) = task { dao.reorderPlaylist(playlist.id, tracks.map { it.id }) }
+    fun deletePlaylist(playlist: Playlist) = task { dao.deletePlaylist(playlist.id) }
+    fun enqueuePlaylist(playlist: Playlist) = task { controller?.addMediaItems(dao.getPlaylistTracks(playlist.id).map { it.mediaItem(settings.value) }); notify("Playlist agregada a la cola") }
+    fun enqueueAlbum(track: Track) = task { controller?.addMediaItems(dao.albumTracks(track.album).map { it.mediaItem(settings.value) }); notify("Álbum agregado a la cola") }
+    fun scan() { ScanWorker.enqueue(app) }
+    fun addRoot(uri: Uri) { app.preferences.addRoot(uri.toString()); roots.value = app.preferences.roots().toList(); scan() }
+    fun removeRoot(uri: String) = task {
+        app.preferences.removeRoot(uri)
+        runCatching { app.contentResolver.releasePersistableUriPermission(Uri.parse(uri), android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+        dao.forgetRoot(uri); dao.reconcile(); roots.value = app.preferences.roots().toList()
+    }
+    fun notify(text: String) { message.value = text }
+    fun task(block: suspend () -> Unit) { viewModelScope.launch { try { block() } catch (e: CancellationException) { throw e } catch (e: Exception) { notify(e.localizedMessage ?: "Ocurrió un error") } } }
+    override fun onCleared() { controller?.removeListener(listener); MediaController.releaseFuture(future); super.onCleared() }
+}
+
+data class LibraryFilter(val source: String = "", val favorite: Boolean = false, val folder: String = "", val artist: String = "", val album: String = "", val genre: String = "", val sort: String = "title")
+data class QueueTrack(val id: String, val title: String, val artist: String, val cover: String?, val duration: Long)
+data class PlaybackState(val currentId: String = "", val index: Int = 0, val playing: Boolean = false, val position: Long = 0, val duration: Long = 0, val queue: List<QueueTrack> = emptyList(), val buffering: Boolean = false)

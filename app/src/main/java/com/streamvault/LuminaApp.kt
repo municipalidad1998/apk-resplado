@@ -1,0 +1,16 @@
+package com.streamvault
+
+import android.app.Application
+import androidx.room.Room
+import com.streamvault.data.LibraryDatabase
+import com.streamvault.settings.Preferences
+import com.streamvault.artwork.ArtworkStore
+import com.streamvault.processing.SeparationRegistry
+
+class LuminaApp : Application() {
+    val database by lazy { Room.databaseBuilder(this, LibraryDatabase::class.java, "lumina-library.db").build() }
+    val library get() = database.library()
+    val preferences by lazy { Preferences(this) }
+    val artwork by lazy { ArtworkStore(this) }
+    val separation by lazy { SeparationRegistry() }
+}
