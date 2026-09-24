@@ -1,16 +1,30 @@
 # Verificación
 
-## Estado de esta entrega
+## Estado final de esta entrega
 
-Actualizado: 24 de septiembre de 2026. Los resultados de CI y las limitaciones del entorno se documentan explícitamente; “implementado” no significa “certificado en todos los dispositivos”.
+**24 de septiembre de 2026 — CI aprobado.**
 
-- El entorno de edición no tiene Java, Android SDK ni emulador; las descargas directas de Google/Maven están restringidas.
-- Se ejecutó la compilación en un runner de CI con JDK 17 y Android SDK.
-- Run [35940833713](https://github.com/municipalidad1998/apk-resplado/actions/runs/35940833713): el job **build pasó** (`testDebugUnitTest lintDebug assembleDebug assembleDebugAndroidTest`). Se generaron APK debug y APK de pruebas y se publicaron como artefactos del run.
-- En ese run pasaron 3/4 pruebas instrumentadas (Room, análisis PCM, sesión/crossfade/background). La de MediaStore falló al comparar el alias URI `external` usado al insertar con el URI canónico `external_primary` guardado por el escáner. Se corrigió el fixture para insertar en el volumen canónico. La reejecución [35941801977](https://github.com/municipalidad1998/apk-resplado/actions/runs/35941801977) confirmó las 4 pruebas funcionales y 20/20 tests JVM. La prueba de navegación encontró dos elementos con el texto “10 segundos” (fila de Ajustes y opción de diálogo); se restringió el selector al diálogo. La última reejecución de navegación sigue pendiente.
-- No se ha hecho validación de escucha en un teléfono físico, auriculares Bluetooth, tarjeta SD real o una biblioteca de 10.000 archivos.
+Run: [35942450216](https://github.com/municipalidad1998/apk-resplado/actions/runs/35942450216)
+Código probado: `dd86f97c049215bfceca757e64bd14f61b49cf22`
+Los cambios posteriores a ese commit en esta entrega son únicamente documentación de resultados.
 
-Los cambios posteriores a ese run deben volver a pasar la misma verificación. Consulta el run más reciente de la rama de esta entrega; un run anterior no certifica archivos modificados después.
+| Comprobación | Resultado |
+|---|---|
+| `testDebugUnitTest` | **20 aprobadas; 0 fallos, 0 errores, 0 omitidas** |
+| `lintDebug` | **Aprobado**, sin errores bloqueantes |
+| `assembleDebug` | **APK generado** |
+| `assembleDebugAndroidTest` | **APK de tests generado** |
+| Instrumentación Android 15 / API 35 | **5 pruebas aprobadas** |
+| XML de manifiesto/recursos y archivo Gradle Wrapper | Validación estructural local aprobada |
+| `git diff --check` | Sin errores de whitespace |
+
+**[APK debug descargable](https://github.com/municipalidad1998/apk-resplado/actions/runs/35942450216/artifacts/10785677058)**. Los artefactos `lumina-build-reports` y `lumina-device-reports` del mismo run contienen resultados y logcat del emulador. El job de dispositivo instala los mismos APK que produce el job de compilación; no recompila una variante diferente.
+
+### Alcance y correcciones durante la verificación
+
+El entorno de edición carece de Java, SDK/emulador Android y acceso directo a Google Maven, así que la compilación y los tests Android se ejecutaron realmente en CI. El primer intento de preparación del SDK falló antes de compilar; se utilizó el SDK preinstalado del runner. Durante las pruebas se corrigieron dos problemas de fixtures/selectores: la diferencia entre URI alias `external` y volumen canónico `external_primary`, y un selector de texto que coincidía tanto con una fila de ajustes como con una opción de diálogo. La suite se repitió completa después de las correcciones y terminó en verde.
+
+**No se ha validado físicamente** la escucha, Bluetooth, SD real ni el rendimiento con 10.000 archivos. Las cinco pruebas no certifican todos los teléfonos, códecs, permisos de fabricantes o situaciones de batería. Tampoco validan separación vocal real: no hay un modelo instalado. Queda la matriz manual siguiente antes de una distribución de producción.
 
 ## Tests JVM
 

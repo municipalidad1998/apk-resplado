@@ -4,6 +4,12 @@ Reproductor **Android nativo**, local y sin cuenta. Kotlin + Jetpack Compose + R
 
 No es una web empaquetada, no contiene canciones de demostración y no sube archivos. Al abrirlo por primera vez, la biblioteca estará vacía hasta que se autorice el acceso a música o una carpeta.
 
+## APK verificado
+
+**[Descargar Lúmina debug (ZIP con APK)](https://github.com/municipalidad1998/apk-resplado/actions/runs/35942450216/artifacts/10785677058)** · [Resultado de CI y reportes](https://github.com/municipalidad1998/apk-resplado/actions/runs/35942450216)
+
+Build del código `dd86f97`: **20/20 pruebas JVM, Android Lint, compilación y 5/5 pruebas instrumentadas en Android 15 aprobadas**. El artefacto es un APK de depuración instalable, no una versión firmada para distribución pública. Extrae `app-debug.apk` del ZIP; GitHub puede pedir iniciar sesión para descargar artefactos. Los artefactos tienen caducidad: si ya no está disponible, recompila con las instrucciones siguientes.
+
 ## Compilar e instalar
 
 Requisitos:
