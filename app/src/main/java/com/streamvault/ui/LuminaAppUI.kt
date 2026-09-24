@@ -73,5 +73,4 @@ fun LuminaAppUI(vm: LibraryViewModel, requestPermission: () -> Unit, chooseFolde
             }
         }
     }
-    BackHandler(fullPlayer) { fullPlayer = false }
 }

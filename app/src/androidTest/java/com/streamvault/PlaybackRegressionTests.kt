@@ -36,6 +36,13 @@ class PlaybackRegressionTests {
         repeat(n) { i -> bytes.putShort(if (i < silence * rate) 0 else (sin(i * 2 * Math.PI * 440 / rate) * 9000).toInt().toShort()) }
         return File(app.cacheDir, name).apply { writeBytes(bytes.array()) }
     }
+    private fun screenshot(name: String) {
+        compose.waitForIdle()
+        val bitmap = InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot() ?: return
+        val file = File(app.getExternalFilesDir(null), "screenshots/$name.png").apply { parentFile!!.mkdirs() }
+        file.outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+        bitmap.recycle()
+    }
     private suspend fun register(file: File, id: String, duration: Long): Track {
         val track = Track(id, Uri.fromFile(file).toString(), file.name, id, durationMs = duration)
         app.library.insert(track)
@@ -67,8 +74,11 @@ class PlaybackRegressionTests {
             compose.onNodeWithTag("mini-player").performClick()
             compose.onNodeWithTag("open-queue").performClick()
             compose.onNodeWithTag("queue-panel").assertIsDisplayed()
+            screenshot("queue-panel")
             compose.onNodeWithContentDescription("Volver al reproductor").assertIsDisplayed().performClick()
+            compose.onNodeWithTag("queue-panel").assertDoesNotExist()
             compose.onNodeWithTag("open-queue").assertIsDisplayed()
+            screenshot("player")
             compose.onNodeWithContentDescription("Cerrar reproductor").performClick()
         } finally {
             main { if (vm.playback.value.playing) vm.toggle() }

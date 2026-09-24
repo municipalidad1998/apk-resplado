@@ -10,6 +10,7 @@ adb shell am instrument -w -r com.streamvault.test/androidx.test.runner.AndroidJ
 runner_result=$?
 cat device-reports/instrumentation.txt
 adb logcat -d > device-reports/logcat.txt
+adb pull /sdcard/Android/data/com.streamvault/files/screenshots device-reports/screenshots || true
 set -e
 python3 - "$runner_result" <<'PY'
 import os, re, sys

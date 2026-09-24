@@ -31,8 +31,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.streamvault.data.Track
 import kotlinx.coroutines.Dispatchers
@@ -82,7 +80,8 @@ fun FullPlayer(vm: LibraryViewModel, track: Track, state: PlaybackState, dismiss
             }.getOrDefault(Color(0xFF332845))
         }
     }
-    Dialog(onDismissRequest = { if (queue) queue = false else dismiss() }, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
+    BackHandler { if (queue) queue = false else dismiss() }
+    Box(Modifier.fillMaxSize().testTag("full-player")) {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             Box(Modifier.fillMaxSize()) {
             Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(background.copy(alpha = .48f), MaterialTheme.colorScheme.background))).safeDrawingPadding()) {

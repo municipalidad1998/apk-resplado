@@ -58,12 +58,13 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
     private var queueLoad: Job? = null
     private var controller: MediaController? = null
+    private val controllerReady = CompletableDeferred<MediaController>()
     private val future = MediaController.Builder(app, SessionToken(app, ComponentName(app, PlaybackService::class.java))).buildAsync()
     private val listener = object : Player.Listener { override fun onEvents(player: Player, events: Player.Events) { sync() } }
     init {
         future.addListener({
-            runCatching { future.get() }.onSuccess { c -> controller = c; c.addListener(listener); sync() }
-                .onFailure { message.value = "No se pudo conectar el reproductor: ${it.localizedMessage}" }
+            runCatching { future.get() }.onSuccess { c -> controller = c; c.addListener(listener); sync(); controllerReady.complete(c) }
+                .onFailure { controllerReady.completeExceptionally(it); message.value = "No se pudo conectar el reproductor: ${it.localizedMessage}" }
         }, ContextCompat.getMainExecutor(app))
         viewModelScope.launch { while (isActive) { sync(false); delay(250) } }
         viewModelScope.launch { PlaybackEvents.error.collect { if (it != null) { message.value = it; PlaybackEvents.error.value = null } } }
@@ -86,8 +87,8 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
             catch (e: Exception) { notify("No se pudo cargar la cola: ${e.localizedMessage}") }
         }
     }
-    private fun startQueue(track: Track, context: List<Track>, original: Boolean = false) {
-        val c = controller ?: return notify("El reproductor se está conectando…")
+    private suspend fun startQueue(track: Track, context: List<Track>, original: Boolean = false) {
+        val c = withTimeout(10_000) { controllerReady.await() }
         val list = if (context.any { it.id == track.id }) context else listOf(track) + context
         val index = list.indexOfFirst { it.id == track.id }
         c.setMediaItems(list.map { it.mediaItem(settings.value, original && it.id == track.id) }, index, if (original) 0 else track.offset(settings.value.detectSilence))
@@ -149,6 +150,7 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
             val result = app.analysis.resolve(track.id, force = true) ?: error("La pista no está disponible")
             dao.manualOffset(track.id, null)
             if (!settings.value.detectSilence) app.preferences.update { it.copy(detectSilence = true) }
+            applyCurrentStart(track.id)
             notify("Inicio analizado: ${"%.2f".format(result.detectedOffsetMs / 1000.0)} s. Aplicado a la cola actual.")
         } finally { busy.value = false }
     }
@@ -157,7 +159,17 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
         if (seconds != null && (value == null || value >= track.durationMs || track.playbackEndMs?.let { value >= it } == true))
             error("Introduce segundos o mm:ss antes del final: 00:11 equivale a 11 segundos; 0.11 a 110 ms")
         dao.manualOffset(track.id, value)
+        applyCurrentStart(track.id)
         notify("Inicio guardado y aplicado a la cola actual")
+    }
+    private suspend fun applyCurrentStart(id: String) {
+        val fresh = dao.track(id) ?: return
+        val c = controller ?: return
+        if (c.currentMediaItem?.mediaId != id) return
+        val index = c.currentMediaItemIndex
+        // An explicit new start also ends the one-off "original start" override.
+        c.replaceMediaItem(index, fresh.mediaItem(settings.value))
+        c.seekTo(index, fresh.offset(settings.value.detectSilence))
     }
     suspend fun saveTransition(track: Track, endText: String, crossfadeText: String) {
         val latest = dao.track(track.id) ?: error("Pista no disponible")

@@ -241,8 +241,8 @@ class PlaybackService : MediaSessionService() {
                 if (track != null) cues[item.mediaId] = track
                 preparedIds += item.mediaId
                 val start = startOf(item)
-                introAt = start
                 if (!soughtWhileAnalyzing && player.currentPosition < start) seekInternally(start)
+                introAt = start
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) { PlaybackEvents.error.value = e.localizedMessage ?: "No se pudo detectar el inicio" }
             finally {
