@@ -13,6 +13,8 @@ fun Track.mediaItem(settings: PlayerSettings, original: Boolean = false): MediaI
         putLong("duration", durationMs)
         putString("uri", uri)
         putBoolean("original", original)
+        playbackEndMs?.let { putLong("end", it) }
+        crossfadeSeconds?.let { putInt("crossfade", it) }
     }
     return MediaItem.Builder().setMediaId(id).setUri(uri).setMediaMetadata(
         MediaMetadata.Builder().setTitle(displayName).setArtist(artist).setAlbumTitle(album)
@@ -21,3 +23,6 @@ fun Track.mediaItem(settings: PlayerSettings, original: Boolean = false): MediaI
 }
 val MediaItem.offsetMs: Long get() = mediaMetadata.extras?.getLong("offset") ?: 0
 val MediaItem.durationMs: Long get() = mediaMetadata.extras?.getLong("duration") ?: 0
+
+val MediaItem.selectedEndMs: Long? get() = mediaMetadata.extras?.let { if (it.containsKey("end")) it.getLong("end") else null }
+val MediaItem.crossfadeSeconds: Int? get() = mediaMetadata.extras?.let { if (it.containsKey("crossfade")) it.getInt("crossfade") else null }

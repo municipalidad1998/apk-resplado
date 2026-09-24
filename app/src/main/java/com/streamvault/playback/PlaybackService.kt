@@ -11,10 +11,12 @@ import com.streamvault.LuminaApp
 import com.streamvault.ui.MainActivity
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import com.streamvault.data.Track
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-object PlaybackEvents { val error = MutableStateFlow<String?>(null); val mixing = MutableStateFlow(false); val audioSessionId = MutableStateFlow(0) }
+object PlaybackEvents { val error = MutableStateFlow<String?>(null); val mixing = MutableStateFlow(false); val audioSessionId = MutableStateFlow(0); val analyzing = MutableStateFlow<String?>(null) }
 
 /** Session, notification and audio focus outlive the Activity. No Activity holds an ExoPlayer. */
 class PlaybackService : MediaSessionService() {
@@ -31,6 +33,17 @@ class PlaybackService : MediaSessionService() {
     private var introAt = 0L
     private var lastSavedAt = 0L
     private val queueMutex = Mutex()
+    private val cues = mutableMapOf<String, Track>()
+    private var resolveJob: Job? = null
+    private var resolveGeneration = 0
+    private var gateId: String? = null
+    private var resumeAfterAnalysis = false
+    private var ignoredPauseEvents = 0
+    private var internalSeek = false
+    private var soughtWhileAnalyzing = false
+    private var prefetchJob: Job? = null
+    private var prefetchId: String? = null
+    private val preparedIds = mutableSetOf<String>()
     private val attributes = AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build()
 
     override fun onCreate() {
@@ -57,6 +70,25 @@ class PlaybackService : MediaSessionService() {
                 active.repeatMode = settings.repeat
                 active.shuffleModeEnabled = settings.shuffle
                 active.pauseAtEndOfMediaItems = !settings.autoPlay
+                preparedIds.clear(); prefetchJob?.cancel(); prefetchId = null
+            }
+        }
+        scope.launch {
+            app.library.observeQueueCues().distinctUntilChanged().collect { records ->
+                records.forEach { record ->
+                    val fresh = record.toTrack()
+                    val old = cues.put(record.id, fresh)
+                    val changed = old == null || old.offset(app.preferences.state.value.detectSilence) != fresh.offset(app.preferences.state.value.detectSilence) ||
+                        old.playbackEndMs != fresh.playbackEndMs || old.crossfadeSeconds != fresh.crossfadeSeconds
+                    if (changed) {
+                        if (active.currentMediaItem?.mediaId == record.id || (preparingIndex in 0 until active.mediaItemCount && active.getMediaItemAt(preparingIndex).mediaId == record.id)) cancelMix()
+                        if (active.currentMediaItem?.mediaId == record.id && !isOriginal(active.currentMediaItem!!) &&
+                            old != null && old.offset(app.preferences.state.value.detectSilence) != fresh.offset(app.preferences.state.value.detectSilence)) {
+                            val start = fresh.offset(app.preferences.state.value.detectSilence)
+                            if (active.currentPosition < start) seekInternally(start)
+                        }
+                    }
+                }
             }
         }
         scope.launch { while (isActive) { tick(); delay(40) } }
@@ -76,13 +108,25 @@ class PlaybackService : MediaSessionService() {
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             if (swapping) return
             cancelMix()
-            mediaItem ?: return
-            introAt = mediaItem.offsetMs
-            if (!restoring && active.currentPosition < mediaItem.offsetMs) active.seekTo(mediaItem.offsetMs)
+            if (mediaItem == null) {
+                ++resolveGeneration; resolveJob?.cancel(); gateId = null; PlaybackEvents.analyzing.value = null
+                return
+            }
+            beginTrack(mediaItem)
             if (!restoring) scope.launch { app.library.played(mediaItem.mediaId, System.currentTimeMillis()) }
         }
+        override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+            if (!playWhenReady && ignoredPauseEvents > 0) { ignoredPauseEvents--; return }
+            if (gateId != null) {
+                resumeAfterAnalysis = playWhenReady
+                if (playWhenReady) pauseForAnalysis()
+            }
+        }
         override fun onPositionDiscontinuity(oldPosition: Player.PositionInfo, newPosition: Player.PositionInfo, reason: Int) {
-            if (!swapping) { cancelMix(); introAt = -1 }
+            if (!swapping) {
+                cancelMix(); introAt = -1
+                if (gateId != null && !internalSeek && reason == Player.DISCONTINUITY_REASON_SEEK && oldPosition.mediaItemIndex == newPosition.mediaItemIndex) soughtWhileAnalyzing = true
+            }
         }
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             if (!isPlaying && !swapping) { cancelMix(); savePosition() }
@@ -102,13 +146,27 @@ class PlaybackService : MediaSessionService() {
         }
     }
     private fun tick() {
-        if (!active.isPlaying || swapping) return
+        if (!active.isPlaying || swapping || gateId != null) return
         val item = active.currentMediaItem ?: return
-        val duration = active.duration.takeIf { it > 0 } ?: return
+        val fileDuration = active.duration.takeIf { it > 0 } ?: return
+        val duration = PlaybackCue.end(fileDuration, startOf(item), endOf(item))
         val position = active.currentPosition
         val settings = app.preferences.state.value
         if (System.currentTimeMillis() - lastSavedAt > 3000) { savePosition(); lastSavedAt = System.currentTimeMillis() }
-        if (settings.crossfade == 0 || !settings.autoPlay || active.repeatMode == Player.REPEAT_MODE_ONE || !active.hasNextMediaItem()) {
+        val crossfade = (if (cues.containsKey(item.mediaId)) cues[item.mediaId]?.crossfadeSeconds else item.crossfadeSeconds) ?: settings.crossfade
+        if (position >= duration && duration < fileDuration) {
+            cancelMix()
+            when {
+                active.repeatMode == Player.REPEAT_MODE_ONE -> seekInternally(startOf(item))
+                settings.autoPlay && active.hasNextMediaItem() -> {
+                    val next = active.nextMediaItemIndex
+                    active.seekTo(next, startOf(active.getMediaItemAt(next))); active.play()
+                }
+                else -> active.pause()
+            }
+            return
+        }
+        if (crossfade == 0 || !settings.autoPlay || active.repeatMode == Player.REPEAT_MODE_ONE || !active.hasNextMediaItem()) {
             if (preparingIndex != C.INDEX_UNSET) cancelMix()
             val inGain = if (settings.fades && introAt >= 0) ((position - introAt) / 450f).coerceIn(0f, 1f) else 1f
             val outGain = if (settings.fades && !active.hasNextMediaItem()) ((duration - position) / 450f).coerceIn(0f, 1f) else 1f
@@ -118,13 +176,15 @@ class PlaybackService : MediaSessionService() {
         val nextIndex = active.nextMediaItemIndex
         if (nextIndex == C.INDEX_UNSET) return
         val next = active.getMediaItemAt(nextIndex)
-        val requested = MixMath.duration(settings.crossfade * 1000L, duration - item.offsetMs, next.durationMs - next.offsetMs)
+        prefetch(next)
+        val nextEnd = PlaybackCue.end(next.durationMs, startOf(next), endOf(next))
+        val requested = PlaybackCue.overlap(crossfade * 1000L, duration - startOf(item), nextEnd - startOf(next))
         if (requested <= 0) return
         val remaining = duration - position
         if (preparingIndex != C.INDEX_UNSET && preparingIndex != nextIndex) cancelMix()
-        if (preparingIndex == C.INDEX_UNSET && remaining <= requested + 2500) {
+        if (preparingIndex == C.INDEX_UNSET && next.mediaId in preparedIds && remaining <= requested + 2500) {
             preparingIndex = nextIndex
-            incoming.setMediaItems((0 until active.mediaItemCount).map(active::getMediaItemAt), nextIndex, next.offsetMs)
+            incoming.setMediaItems((0 until active.mediaItemCount).map(active::getMediaItemAt), nextIndex, startOf(next))
             incoming.repeatMode = active.repeatMode
             incoming.shuffleModeEnabled = active.shuffleModeEnabled
             incoming.pauseAtEndOfMediaItems = active.pauseAtEndOfMediaItems
@@ -145,6 +205,60 @@ class PlaybackService : MediaSessionService() {
             active.volume = outGain; incoming.volume = inGain
             if (progress >= 1f) finishMix()
         } else active.volume = 1f
+    }
+    private fun isOriginal(item: MediaItem) = item.mediaMetadata.extras?.getBoolean("original") == true
+    private fun startOf(item: MediaItem): Long = if (isOriginal(item)) 0 else
+        cues[item.mediaId]?.offset(app.preferences.state.value.detectSilence) ?: item.offsetMs
+    private fun endOf(item: MediaItem): Long? = if (cues.containsKey(item.mediaId)) cues[item.mediaId]?.playbackEndMs else item.selectedEndMs
+    private fun seekInternally(position: Long) {
+        internalSeek = true
+        try { active.seekTo(position) } finally { internalSeek = false }
+    }
+    private fun pauseForAnalysis() {
+        if (active.playWhenReady) { ignoredPauseEvents++; active.pause() }
+    }
+    private fun beginTrack(item: MediaItem) {
+        val shouldResume = active.playWhenReady || (gateId != null && resumeAfterAnalysis)
+        val generation = ++resolveGeneration
+        resolveJob?.cancel()
+        val player = active
+        gateId = item.mediaId
+        soughtWhileAnalyzing = false
+        resumeAfterAnalysis = shouldResume
+        pauseForAnalysis()
+        PlaybackEvents.analyzing.value = item.mediaId
+        resolveJob = scope.launch {
+            try {
+                val track = if (isOriginal(item)) app.library.track(item.mediaId) else app.analysis.resolve(item.mediaId)
+                if (generation != resolveGeneration || active !== player) return@launch
+                if (track != null) cues[item.mediaId] = track
+                preparedIds += item.mediaId
+                val start = startOf(item)
+                introAt = start
+                if (!soughtWhileAnalyzing && player.currentPosition < start) seekInternally(start)
+            } catch (e: CancellationException) { throw e }
+            catch (e: Exception) { PlaybackEvents.error.value = e.localizedMessage ?: "No se pudo detectar el inicio" }
+            finally {
+                if (generation == resolveGeneration && active === player) {
+                    gateId = null
+                    PlaybackEvents.analyzing.value = null
+                    if (resumeAfterAnalysis) player.play()
+                }
+            }
+        }
+    }
+    private fun prefetch(item: MediaItem) {
+        if (item.mediaId in preparedIds || prefetchId == item.mediaId) return
+        prefetchJob?.cancel()
+        prefetchId = item.mediaId
+        prefetchJob = scope.launch {
+            try {
+                val track = if (isOriginal(item)) app.library.track(item.mediaId) else app.analysis.resolve(item.mediaId)
+                if (track != null) cues[item.mediaId] = track
+                preparedIds += item.mediaId
+            } catch (e: CancellationException) { throw e }
+            catch (_: Exception) { /* Active-track gate will surface errors, never invent a successful offset. */ }
+        }
     }
     private fun finishMix() {
         swapping = true
@@ -177,9 +291,9 @@ class PlaybackService : MediaSessionService() {
         if (active.mediaItemCount > 0) app.preferences.savePosition(active.currentMediaItemIndex, active.currentPosition)
     }
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = session
-    override fun onTaskRemoved(rootIntent: Intent?) { if (!active.playWhenReady) { stopSelf() } }
+    override fun onTaskRemoved(rootIntent: Intent?) { if (!active.playWhenReady && gateId == null) { stopSelf() } }
     override fun onDestroy() {
-        savePosition(); scope.cancel()
+        savePosition(); ++resolveGeneration; scope.cancel(); PlaybackEvents.analyzing.value = null
         session?.release(); session = null
         active.release(); incoming.release()
         super.onDestroy()

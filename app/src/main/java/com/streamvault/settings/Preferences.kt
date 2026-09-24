@@ -20,7 +20,7 @@ data class PlayerSettings(
     val animations: Boolean = true,
     val largeCovers: Boolean = true,
     val excludedFolders: String = ""
-) { val analysisKey get() = "rms-v2:$thresholdDb:$minimumSilence" }
+) { val analysisKey get() = "rms-v3:$thresholdDb:$minimumSilence" }
 
 class Preferences(context: Context) {
     private val prefs = context.getSharedPreferences("lumina", Context.MODE_PRIVATE)

@@ -52,6 +52,7 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
     val roots = MutableStateFlow(app.preferences.roots().toList())
     val playback = MutableStateFlow(PlaybackState())
     val mixing = PlaybackEvents.mixing
+    val analyzing = PlaybackEvents.analyzing
     val current = playback.map { it.currentId }.distinctUntilChanged().flatMapLatest { id ->
         if (id.isEmpty()) flowOf(null) else dao.observeTrack(id)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
@@ -74,10 +75,21 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
             if (queueChanged) (0 until c.mediaItemCount).map { i -> val m = c.getMediaItemAt(i); QueueTrack(m.mediaId, m.mediaMetadata.title.toString(), m.mediaMetadata.artist.toString(), m.mediaMetadata.artworkUri?.toString(), m.durationMs, m.mediaMetadata.albumTitle?.toString().orEmpty()) } else playback.value.queue,
             c.playbackState == Player.STATE_BUFFERING)
     }
-    fun play(track: Track, context: List<Track> = listOf(track), original: Boolean = false) {
+    fun play(track: Track, context: List<Track>? = null, original: Boolean = false) {
+        queueLoad?.cancel()
+        queueLoad = viewModelScope.launch {
+            try {
+                // A context-menu play should not silently replace the queue with one song.
+                val list = context ?: dao.playbackQueue("%", "", false, "", "", "", "", "title").map { it.toTrack() }
+                startQueue(track, list, original)
+            } catch (e: CancellationException) { throw e }
+            catch (e: Exception) { notify("No se pudo cargar la cola: ${e.localizedMessage}") }
+        }
+    }
+    private fun startQueue(track: Track, context: List<Track>, original: Boolean = false) {
         val c = controller ?: return notify("El reproductor se está conectando…")
-        val list = if (context.any { it.id == track.id }) context else listOf(track)
-        val index = list.indexOfFirst { it.id == track.id }.coerceAtLeast(0)
+        val list = if (context.any { it.id == track.id }) context else listOf(track) + context
+        val index = list.indexOfFirst { it.id == track.id }
         c.setMediaItems(list.map { it.mediaItem(settings.value, original && it.id == track.id) }, index, if (original) 0 else track.offset(settings.value.detectSilence))
         c.prepare(); c.play()
     }
@@ -88,14 +100,22 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
         queueLoad = viewModelScope.launch {
             try {
                 val queue = dao.playbackQueue(q, f.source, f.favorite, f.folder, f.artist, f.album, f.genre, f.sort)
-                play(track, queue.map { it.toTrack() })
+                startQueue(track, queue.map { it.toTrack() })
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) { notify("No se pudo cargar la cola: ${e.localizedMessage}") }
         }
     }
     fun toggle() { controller?.let { if (it.playWhenReady) it.pause() else { if (it.playbackState == Player.STATE_IDLE) it.prepare(); it.play() } } }
-    fun next() { controller?.seekToNextMediaItem() }
-    fun previous() { controller?.let { if (it.currentPosition > 3000) it.seekTo(it.currentMediaItem?.offsetMs ?: 0) else it.seekToPreviousMediaItem() } }
+    fun next() = navigate(1)
+    fun previous() = navigate(-1)
+    private fun navigate(direction: Int) {
+        val c = controller ?: return notify("El reproductor se está conectando…")
+        if (c.mediaItemCount < 2) return notify("Solo hay una pista en la cola. Agrega canciones desde A continuación.")
+        val index = if (direction > 0) c.nextMediaItemIndex.takeIf { it != C.INDEX_UNSET } ?: 0
+            else c.previousMediaItemIndex.takeIf { it != C.INDEX_UNSET } ?: c.mediaItemCount - 1
+        // Previous means previous song, not restart-after-three-seconds. The ± buttons handle in-track seeks.
+        c.seekTo(index, c.getMediaItemAt(index).offsetMs); c.prepare(); c.play()
+    }
     fun seek(position: Long) { controller?.seekTo(position.coerceIn(0, playback.value.duration)) }
     fun skip(direction: Int) = seek(MixMath.seek(playback.value.position, direction * settings.value.skipSeconds * 1000L, playback.value.duration))
     fun enqueue(track: Track, next: Boolean = false) {
@@ -126,16 +146,25 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
     fun analyze(track: Track) = task {
         busy.value = true
         try {
-            val result = SilenceAnalyzer(app).analyze(track.uri, settings.value.thresholdDb, settings.value.minimumSilence)
-            dao.analysis(track.id, result.offsetMs, result.waveform, settings.value.analysisKey)
-            notify(if (result.foundSound) "Inicio detectado: ${"%.2f".format(result.offsetMs / 1000.0)} s" else "No se detectó sonido sostenido en los primeros 120 s. Se conserva el inicio original.")
+            val result = app.analysis.resolve(track.id, force = true) ?: error("La pista no está disponible")
+            notify("Inicio analizado: ${"%.2f".format(result.detectedOffsetMs / 1000.0)} s. Aplicado a la cola actual.")
         } finally { busy.value = false }
     }
     fun offset(track: Track, seconds: String?) = task {
-        val value = seconds?.replace(',', '.')?.toDoubleOrNull()
-        if (seconds != null && (value == null || !value.isFinite() || value < 0 || value * 1000 >= track.durationMs)) error("Introduce un punto entre 0 y la duración del audio")
-        dao.manualOffset(track.id, value?.times(1000)?.toLong())
-        notify("Punto de inicio guardado; se aplicará al volver a cargar la pista")
+        val value = seconds?.let(::parseAudioTime)
+        if (seconds != null && (value == null || value >= track.durationMs || track.playbackEndMs?.let { value >= it } == true))
+            error("Introduce segundos o mm:ss antes del final: 00:11 equivale a 11 segundos; 0.11 a 110 ms")
+        dao.manualOffset(track.id, value)
+        notify("Inicio guardado y aplicado a la cola actual")
+    }
+    suspend fun saveTransition(track: Track, endText: String, crossfadeText: String) {
+        val latest = dao.track(track.id) ?: error("Pista no disponible")
+        val end = if (endText.isBlank()) null else parseAudioTime(endText) ?: error("Final inválido: usa mm:ss o segundos")
+        val seconds = if (crossfadeText.isBlank()) null else crossfadeText.toIntOrNull() ?: error("Crossfade: introduce segundos enteros")
+        require(end == null || (end > latest.offset(settings.value.detectSilence) && end <= latest.durationMs)) { "El final debe estar después del inicio y dentro del archivo" }
+        require(seconds == null || seconds in 0..180) { "Crossfade: de 0 a 180 segundos" }
+        dao.transition(track.id, end, seconds)
+        notify("Transición guardada y aplicada a la cola. El archivo original no cambia.")
     }
     fun createPlaylist(name: String, description: String, cover: String? = null) = task {
         if (name.isBlank()) error("Escribe un nombre para la playlist")

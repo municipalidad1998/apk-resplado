@@ -3,6 +3,8 @@ package com.streamvault.ui
 import android.content.Intent
 import android.media.audiofx.AudioEffect
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
@@ -82,20 +84,20 @@ fun SettingsScreen(vm: LibraryViewModel, permission: () -> Unit, folder: () -> U
                 } catch (_: Exception) { vm.notify("Este dispositivo no ofrece un ecualizador compatible") }
             })
             SectionTitle("Hecha para tu música")
-            Text("Lúmina 2.0\nLocal por naturaleza. Sin cuenta, sin anuncios y sin subir tus archivos. La separación de voz necesita un proveedor adicional.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 20.sp)
+            Text("Lúmina 2.1\nLocal por naturaleza. Sin cuenta, sin anuncios y sin subir tus archivos. La separación de voz necesita un proveedor adicional.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 20.sp)
         }
     }
     if (choose.isNotEmpty()) {
         val options: List<Pair<String, String>> = when (choose) {
-            "Crossfade" -> listOf(0, 2, 5, 10, 15, 20, 30).map { it.toString() to if (it == 0) "Desactivado" else "$it segundos" }
+            "Crossfade" -> listOf(0, 2, 5, 10, 15, 20, 30, 60, 90, 120, 180).map { it.toString() to if (it == 0) "Desactivado" else "$it segundos" }
             "Saltar ± segundos" -> listOf(5, 10, 15, 30).map { it.toString() to "$it segundos" }
             "Repetición" -> listOf("0" to "Desactivada", "1" to "Una canción", "2" to "Toda la cola")
             "Sensibilidad" -> listOf("-60" to "Alta · −60 dBFS", "-45" to "Equilibrada · −45 dBFS", "-30" to "Baja · −30 dBFS")
-            "Silencio mínimo" -> listOf(1, 2, 3, 5).map { it.toString() to "$it segundos" }
+            "Silencio mínimo" -> listOf(0, 1, 2, 3, 5).map { it.toString() to "$it segundos" }
             else -> listOf("system" to "Automático según el sistema", "dark" to "Oscuro", "light" to "Claro")
         }
         AlertDialog(onDismissRequest = { choose = "" }, title = { Text(choose) }, text = {
-            Column { options.forEach { (key, label) -> TextButton(onClick = {
+            Column(Modifier.heightIn(max = 400.dp).verticalScroll(rememberScrollState())) { options.forEach { (key, label) -> TextButton(onClick = {
                 val reanalyze = choose == "Sensibilidad" || choose == "Silencio mínimo"
                 update { old -> when (choose) {
                     "Crossfade" -> old.copy(crossfade = key.toInt()); "Saltar ± segundos" -> old.copy(skipSeconds = key.toInt())

@@ -7,7 +7,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -37,7 +40,7 @@ import kotlinx.coroutines.withContext
 
 @Composable
 fun MiniPlayer(track: Track, state: PlaybackState, toggle: () -> Unit, next: () -> Unit, expand: () -> Unit) {
-    Column(Modifier.padding(horizontal = 10.dp).clip(RoundedCornerShape(15.dp)).background(MaterialTheme.colorScheme.surfaceVariant).clickable(onClick = expand)) {
+    Column(Modifier.testTag("mini-player").padding(horizontal = 10.dp).clip(RoundedCornerShape(15.dp)).background(MaterialTheme.colorScheme.surfaceVariant).clickable(onClick = expand)) {
         Row(Modifier.padding(start = 9.dp, top = 8.dp, bottom = 7.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Cover(track.artworkKey, track.displayName, track.cover, Modifier.size(43.dp), track.source == "whatsapp")
             Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
@@ -55,6 +58,8 @@ fun MiniPlayer(track: Track, state: PlaybackState, toggle: () -> Unit, next: () 
 fun FullPlayer(vm: LibraryViewModel, track: Track, state: PlaybackState, dismiss: () -> Unit, menu: (Track) -> Unit, library: () -> Unit) {
     val settings by vm.settings.collectAsStateWithLifecycle()
     val mixing by vm.mixing.collectAsStateWithLifecycle()
+    val analyzing by vm.analyzing.collectAsStateWithLifecycle()
+    var transition by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val audio = remember { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
     var volume by remember { mutableFloatStateOf(audio.getStreamVolume(AudioManager.STREAM_MUSIC).toFloat()) }
@@ -79,12 +84,13 @@ fun FullPlayer(vm: LibraryViewModel, track: Track, state: PlaybackState, dismiss
     }
     Dialog(onDismissRequest = dismiss, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            Box(Modifier.fillMaxSize()) {
             Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(background.copy(alpha = .48f), MaterialTheme.colorScheme.background))).safeDrawingPadding()) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                     ActionIcon(Icons.Rounded.KeyboardArrowDown, "Cerrar reproductor", dismiss)
                     Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("AHORA SUENA", letterSpacing = 2.sp, fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(if (mixing) "Mezclando · Crossfade" else "Tu biblioteca", fontSize = 12.sp)
+                        Text(if (analyzing == track.id) "Analizando inicio…" else if (mixing) "Mezclando · Crossfade" else "Tu biblioteca", fontSize = 12.sp)
                     }
                     ActionIcon(Icons.Rounded.MoreHoriz, "Opciones de la canción", { menu(track) })
                 }
@@ -115,7 +121,7 @@ fun FullPlayer(vm: LibraryViewModel, track: Track, state: PlaybackState, dismiss
                                 ActionIcon(Icons.Rounded.Shuffle, "Aleatorio", { vm.app.preferences.update { it.copy(shuffle = !it.shuffle) } }, settings.shuffle)
                                 ActionIcon(Icons.Rounded.SkipPrevious, "Anterior", vm::previous, modifier = Modifier.size(48.dp))
                                 FilledIconButton(onClick = vm::toggle, modifier = Modifier.size(72.dp), colors = IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.primary)) {
-                                    if (state.buffering) CircularProgressIndicator(Modifier.size(26.dp), color = MaterialTheme.colorScheme.onPrimary)
+                                    if (state.buffering || analyzing == track.id) CircularProgressIndicator(Modifier.size(26.dp), color = MaterialTheme.colorScheme.onPrimary)
                                     else Icon(if (state.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (state.playing) "Pausar" else "Reproducir", Modifier.size(38.dp))
                                 }
                                 ActionIcon(Icons.Rounded.SkipNext, "Siguiente", vm::next, modifier = Modifier.size(48.dp))
@@ -123,7 +129,7 @@ fun FullPlayer(vm: LibraryViewModel, track: Track, state: PlaybackState, dismiss
                             }
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                                 TextButton(onClick = { vm.skip(-1) }) { Icon(Icons.Rounded.Replay, null, Modifier.size(20.dp)); Text(" −${settings.skipSeconds} s") }
-                                TextButton(onClick = { vm.skip(1) }) { Text("+${settings.skipSeconds} s "); Icon(Icons.Rounded.Forward10, null, Modifier.size(20.dp)) }
+                                TextButton(onClick = { vm.skip(1) }) { Text("+${settings.skipSeconds} s "); Icon(Icons.Rounded.FastForward, null, Modifier.size(20.dp)) }
                             }
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Rounded.VolumeDown, null, Modifier.size(18.dp), MaterialTheme.colorScheme.onSurfaceVariant)
@@ -139,27 +145,48 @@ fun FullPlayer(vm: LibraryViewModel, track: Track, state: PlaybackState, dismiss
                         Box(Modifier.widthIn(max = 440.dp)) { artwork() }; controls()
                     }
                 }
-                TextButton(onClick = { queue = true }, modifier = Modifier.fillMaxWidth().padding(8.dp)) { Icon(Icons.Rounded.QueueMusic, null); Text("  A continuación · ${state.queue.size} canciones") }
+                Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 4.dp)) {
+                    TextButton(onClick = { transition = true }, modifier = Modifier.fillMaxWidth()) {
+                        Icon(Icons.Rounded.Tune, null, Modifier.size(18.dp))
+                        Text("  Inicio y crossfade · ${track.crossfadeSeconds ?: settings.crossfade} s", maxLines = 1)
+                    }
+                    FilledTonalButton(onClick = { queue = true }, modifier = Modifier.fillMaxWidth().testTag("open-queue")) {
+                        Icon(Icons.Rounded.QueueMusic, null)
+                        Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
+                            Text("A continuación", maxLines = 1)
+                            Text("${state.queue.size} pistas en la cola", fontSize = 11.sp)
+                        }
+                        Icon(Icons.Rounded.KeyboardArrowUp, null)
+                    }
+                }
+            }
+            if (queue) QueuePanel(vm, state, { queue = false })
             }
         }
-        if (queue) QueueSheet(vm, state, { queue = false })
+        if (transition) OffsetDialog(vm, track, false, { transition = false })
     }
 }
 
 @Composable
-private fun QueueSheet(vm: LibraryViewModel, state: PlaybackState, dismiss: () -> Unit) {
+private fun QueuePanel(vm: LibraryViewModel, state: PlaybackState, dismiss: () -> Unit) {
     var add by remember { mutableStateOf(false) }
     var lists by remember { mutableStateOf(false) }
     val playlists by vm.playlists.collectAsStateWithLifecycle()
-    ModalBottomSheet(onDismissRequest = dismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
-        Column(Modifier.fillMaxHeight(.85f).padding(horizontal = 20.dp)) {
+    val scroll = rememberLazyListState(initialFirstVisibleItemIndex = state.index.coerceAtLeast(0))
+    BackHandler { dismiss() }
+    Surface(Modifier.fillMaxSize().testTag("queue-panel"), color = MaterialTheme.colorScheme.surface) {
+        Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("A continuación", fontSize = 24.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                ActionIcon(Icons.Rounded.Add, "Agregar canciones a la cola", { add = true })
-                ActionIcon(Icons.Rounded.PlaylistAdd, "Agregar playlist a la cola", { lists = true })
+                Text("A continuación", fontSize = 24.sp, fontWeight = FontWeight.Bold, maxLines = 2, modifier = Modifier.weight(1f))
+                ActionIcon(Icons.Rounded.Close, "Volver al reproductor", dismiss)
             }
-            Text("Tu siguiente descubrimiento está aquí.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(bottom = 14.dp))
-            LazyColumn {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                TextButton(onClick = { add = true }) { Icon(Icons.Rounded.Add, null); Text("Canciones") }
+                TextButton(onClick = { lists = true }) { Icon(Icons.Rounded.PlaylistAdd, null); Text("Playlists") }
+            }
+            Text(if (state.queue.size < 2) "Agrega otra pista para usar Anterior y Siguiente." else "${state.queue.size} pistas · toca una canción para escucharla.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(bottom = 14.dp))
+            LazyColumn(Modifier.weight(1f).fillMaxWidth(), state = scroll, contentPadding = PaddingValues(bottom = 24.dp)) {
+                if (state.queue.isEmpty()) item { EmptyState("La cola está vacía", "Agrega canciones o una playlist para empezar.") }
                 itemsIndexed(state.queue, key = { index, item -> "$index-${item.id}" }) { index, item ->
                     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(if (index == state.index) MaterialTheme.colorScheme.primaryContainer else Color.Transparent).padding(horizontal = 8.dp)) {
                         if (index == state.index) Text("AHORA SUENA", fontSize = 9.sp, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 10.dp))

@@ -59,8 +59,8 @@ fun TrackActions(vm: LibraryViewModel, initialTrack: Track, dismiss: () -> Unit)
                 Triple(if (track.favorite) "Quitar de favoritos" else "Favorito", Icons.Rounded.FavoriteBorder) { runAndClose { vm.favorite(track) } },
                 Triple("Editar información", Icons.Rounded.Edit) { action = "edit" },
                 Triple("Cambiar portada", Icons.Rounded.Image) { image.launch(arrayOf("image/*")) },
-                Triple("Detectar inicio del audio", Icons.Rounded.GraphicEq) { action = "offset" },
-                Triple("Quitar voz", Icons.Rounded.MicOff) { action = "separate" },
+                Triple("Inicio y transición / crossfade", Icons.Rounded.GraphicEq) { action = "offset" },
+                Triple("Quitar voz · requiere modelo", Icons.Rounded.MicOff) { action = "separate" },
                 Triple("Compartir", Icons.Rounded.Share) {
                     runCatching {
                         val original = Uri.parse(track.uri)
@@ -150,10 +150,15 @@ private fun EditTrack(track: Track, dismiss: () -> Unit, save: (String, String, 
 }
 
 @Composable
-private fun OffsetDialog(vm: LibraryViewModel, track: Track, busy: Boolean, dismiss: () -> Unit) {
+fun OffsetDialog(vm: LibraryViewModel, track: Track, busy: Boolean, dismiss: () -> Unit) {
     var offset by remember(track.manualOffsetMs) { mutableStateOf(track.manualOffsetMs?.let { (it / 1000.0).toString() }.orEmpty()) }
+    var end by remember(track.playbackEndMs) { mutableStateOf(track.playbackEndMs?.let { (it / 1000.0).toString() }.orEmpty()) }
+    var crossfade by remember(track.crossfadeSeconds) { mutableStateOf(track.crossfadeSeconds?.toString().orEmpty()) }
+    val state by vm.playback.collectAsStateWithLifecycle()
+    val working by vm.busy.collectAsStateWithLifecycle()
+    val settings by vm.settings.collectAsStateWithLifecycle()
     val color = MaterialTheme.colorScheme.primary
-    AlertDialog(onDismissRequest = dismiss, title = { Text("El verdadero comienzo") }, text = {
+    AlertDialog(onDismissRequest = dismiss, title = { Text("Inicio y transición") }, text = {
         Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Analiza hasta 120 segundos del inicio. Se guarda un offset de reproducción, sin recortar el original.")
             if (track.waveform.isNotEmpty()) {
@@ -164,13 +169,26 @@ private fun OffsetDialog(vm: LibraryViewModel, track: Track, busy: Boolean, dism
                 Text("Forma de onda del fragmento inicial", fontSize = 10.sp)
             }
             Info("INICIO DETECTADO", "${"%.2f".format(track.detectedOffsetMs / 1000.0)} s")
-            Button(onClick = { vm.analyze(track) }, enabled = !busy) { Text(if (busy) "Analizando audio…" else "Detectar inicio automáticamente") }
-            if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
-            OutlinedTextField(offset, { offset = it }, label = { Text("Inicio manual (segundos)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), singleLine = true)
+            Button(onClick = { vm.analyze(track) }, enabled = !busy && !working) { Text(if (busy || working) "Analizando audio…" else "Detectar inicio automáticamente") }
+            if (busy || working) LinearProgressIndicator(Modifier.fillMaxWidth())
+            OutlinedTextField(offset, { offset = it }, label = { Text("Inicio manual: mm:ss o segundos") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text), singleLine = true)
             Row {
                 TextButton(onClick = { vm.offset(track, offset) }) { Text("Guardar punto") }
                 TextButton(onClick = { vm.offset(track, null) }) { Text("Usar automático") }
             }
+            Text("00:11 = 11 segundos. 0.11 = 110 milisegundos. Para silencios menores de un segundo, selecciona Silencio mínimo: 0 en Ajustes.", style = MaterialTheme.typography.bodySmall)
+            HorizontalDivider()
+            Text("Final útil y crossfade", style = MaterialTheme.typography.titleMedium)
+            Text("Si el canto termina en 03:20 pero el archivo sigue dos minutos, fija 03:20 aquí. No se detecta automáticamente el final musical: tú eliges dónde salir.", style = MaterialTheme.typography.bodySmall)
+            OutlinedTextField(end, { end = it }, label = { Text("Final útil: mm:ss o segundos") }, placeholder = { Text("Vacío: final original (${time(track.durationMs)})") }, singleLine = true)
+            if (state.currentId == track.id) TextButton(onClick = { end = (state.position / 1000.0).toString() }) { Text("Usar posición actual como final") }
+            OutlinedTextField(crossfade, { crossfade = it }, label = { Text("Crossfade de esta pista (0–180 s)") }, placeholder = { Text("Vacío: global ${settings.crossfade} s") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true)
+            Text("La mezcla empieza antes del final útil, durante el tiempo elegido. 0 desactiva la mezcla; se limita únicamente al audio disponible.", style = MaterialTheme.typography.bodySmall)
+            Row {
+                TextButton(onClick = { vm.task { vm.saveTransition(track, end, crossfade) } }) { Text("Guardar transición") }
+                TextButton(onClick = { end = ""; crossfade = ""; vm.task { vm.saveTransition(track, "", "") } }) { Text("Restablecer") }
+            }
+            HorizontalDivider()
             TextButton(onClick = { vm.play(track, original = true); dismiss() }) { Text("Reproducir desde el inicio original") }
             TextButton(onClick = { vm.play(track); dismiss() }) { Text("Reproducir desde el inicio guardado") }
         }
@@ -200,7 +218,7 @@ private fun SeparationDialog(vm: LibraryViewModel, track: Track, dismiss: () -> 
     AlertDialog(onDismissRequest = dismiss, title = { Text("Quitar voz") }, text = {
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Icon(Icons.Rounded.AutoAwesome, null, tint = MaterialTheme.colorScheme.primary)
-            Text("Voz e instrumental", style = MaterialTheme.typography.titleMedium)
+            Text(if (availability is Availability.Unavailable) "No hay un motor de separación instalado" else "Voz e instrumental", style = MaterialTheme.typography.titleMedium)
             Text(when (val value = availability) { is Availability.Unavailable -> value.reason; Availability.Ready -> "Motor: ${vm.app.separation.provider.name}"; null -> "Comprobando motor…" })
             if (running) {
                 val percent = work?.progress?.getInt("percent", 0) ?: 0
@@ -218,7 +236,7 @@ private fun SeparationDialog(vm: LibraryViewModel, track: Track, dismiss: () -> 
                 TextButton(onClick = { vm.task { work?.outputData?.getString("vocals")?.let { vm.app.library.track(it)?.let { voice -> vm.play(voice) } } } }) { Text("Escuchar voz") }
                 Button(onClick = { export.launch(audio.fileName) }) { Text("Guardar instrumental como…") }
             }
-            Text("Tu archivo original siempre se conserva.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Escuchar el original no elimina la voz. Solo un procesamiento terminado genera una nueva pista Instrumental. Esta versión no incluye un modelo de separación.", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }, confirmButton = { TextButton(onClick = dismiss) { Text("Cerrar") } })
 }
