@@ -5,7 +5,7 @@ on:
   pull_request:
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 concurrency:
   group: android-${{ github.ref }}
   cancel-in-progress: true
@@ -107,3 +107,34 @@ jobs:
         with:
           name: lumina-device-reports
           path: device-reports/
+  publish-apk:
+    needs: [build, device-tests]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/arena/01a0d0df-apk-resplado'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with:
+          name: lumina-debug-apk
+          path: apks/app
+      - name: Name the installable APK
+        run: |
+          mkdir -p release
+          cp apks/app/app-debug.apk release/lumina-2.1.0-debug.apk
+          ls -l release
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v2.1.0
+          name: Lúmina 2.1.0 (debug)
+          body: |
+            APK de depuración de Lúmina 2.1.0, generado y verificado por este flujo
+            (pruebas JVM, Lint y pruebas instrumentadas en Android 15).
+
+            Instalación: descarga `lumina-2.1.0-debug.apk` y ábrelo en el teléfono
+            permitiendo "Instalar apps desconocidas" para el navegador o gestor de archivos.
+            Está firmado con la clave de depuración de este flujo; si tenías instalada una
+            compilación anterior firmada con otra clave, Android puede pedir desinstalarla
+            primero (haz respaldo antes).
+          files: release/lumina-2.1.0-debug.apk
+          fail_on_unmatched_files: true
