@@ -75,3 +75,18 @@ Ejecutar en al menos Android 8, 12, 13, 14, 15 y una versión posterior disponib
 - [ ] Modelo ausente: mensaje honesto sin progreso inventado. Al integrar un proveedor: cancelación, error de red/disco, corrupto, salida idéntica al original y exportación segura.
 
 Los fabricantes pueden suspender procesos en segundo plano con políticas de batería propias. No se puede prometer continuidad tras “Forzar detención” o apagar el teléfono.
+
+## Resultado verificado 2.2.0 · run 35950172571 · código `f3397ab`
+
+- **Build:** 31/31 pruebas JVM (`testDebugUnitTest`), Android Lint y compilación del APK de depuración.
+- **Dispositivo:** 8/8 pruebas instrumentadas en Android 15 / API 35.
+- **Publicación:** release `v2.2.0` con `reproductor-denilson-2.2.0.apk` (21 503 924 bytes), firmado con el keystore estable del repositorio.
+- **Pruebas nuevas (JVM):** lectura del JSON de GitHub Releases, ausencia de APK, rechazo de URLs no https, comparación numérica de versiones (`2.10.0 > 2.9.0`), construcción de la consulta y las URLs de YouTube.
+- **No probado en dispositivo:** instalación real de una actualización por encima de otra (requiere dos versiones publicadas y un teléfono), apertura de la app oficial de YouTube, paleta dinámica en Android 12+.
+
+### Nota sobre la firma
+
+Hasta la 2.1 cada compilación de CI usaba una clave de depuración distinta, así que una
+actualización exigía desinstalar. Desde `54c3b51` el repositorio incluye `keystore/lumina.jks`,
+generado por el propio flujo, y todas las compilaciones comparten esa firma. Si en el futuro se
+usa el secreto `KEYSTORE_BASE64`, conviene borrar el archivo del repositorio.

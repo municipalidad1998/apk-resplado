@@ -1,16 +1,24 @@
-# Lúmina · Tu música, en tu universo
+# Reproductor de música Denilson
 
-**Actualización 2.1:** [correcciones de cola, inicio, navegación y crossfade por pista](docs/PLAYER_FIXES_2_1.md).
+**Versión 2.2.0:** nombre propio, [actualizaciones automáticas, botón YouTube oficial y diseño renovado](docs/DENILSON_2_2.md).
+**Versión 2.1:** [correcciones de cola, inicio, navegación y crossfade por pista](docs/PLAYER_FIXES_2_1.md).
 
 Reproductor **Android nativo**, local y sin cuenta. Kotlin + Jetpack Compose + Room + Media3. Este proyecto reemplaza la interfaz IPTV anterior de StreamVault; conserva `applicationId = com.streamvault`, pero utiliza una nueva base `lumina-library.db` y **no importa las antiguas listas IPTV**.
 
 No es una web empaquetada, no contiene canciones de demostración y no sube archivos. Al abrirlo por primera vez, la biblioteca estará vacía hasta que se autorice el acceso a música o una carpeta.
 
-## APK verificado — Lúmina 2.1
+## APK verificado — Reproductor de música Denilson 2.2.0
 
-**[Descargar Lúmina debug (ZIP con APK)](https://github.com/municipalidad1998/apk-resplado/actions/runs/35946248313/artifacts/10786399543)** · [Resultado de CI y reportes](https://github.com/municipalidad1998/apk-resplado/actions/runs/35946248313)
+**[Descargar el APK](https://github.com/municipalidad1998/apk-resplado/releases/download/v2.2.0/reproductor-denilson-2.2.0.apk)** · [Página del release](https://github.com/municipalidad1998/apk-resplado/releases/tag/v2.2.0) · [Resultado de CI](https://github.com/municipalidad1998/apk-resplado/actions/runs/35950172571)
 
-Build del código `e11fcf5`: **25/25 pruebas JVM, Android Lint, compilación y 8/8 pruebas instrumentadas en Android 15 aprobadas**. El artefacto es un APK de depuración instalable, no una versión firmada para distribución pública. Extrae `app-debug.apk` del ZIP; GitHub puede pedir iniciar sesión para descargar artefactos. Los artefactos tienen caducidad: si ya no está disponible, recompila con las instrucciones siguientes.
+Build del código `f3397ab`: **31/31 pruebas JVM, Android Lint, compilación y 8/8 pruebas instrumentadas en Android 15 aprobadas**. Desde esta versión el APK se firma con una clave estable del repositorio, por lo que las próximas versiones se instalan **encima** sin desinstalar ni perder la biblioteca. La propia app puede buscarlas e instalarlas desde **Ajustes → Actualizaciones**.
+
+### Límites reales de la versión 2.2.0
+
+- **YouTube:** el botón abre la búsqueda en la **app oficial** de YouTube o YouTube Music. No bloquea anuncios ni reproduce YouTube en segundo plano: eso depende de YouTube Premium y sus términos.
+- **Separación de voz:** sigue sin modelo instalado; la opción lo indica en lugar de simular un resultado.
+- **Actualizaciones:** requieren que autorices una vez «Instalar apps desconocidas» para la app.
+- Versión anterior 2.1 (otra firma): Android pedirá desinstalarla antes. Haz respaldo.
 
 ## Compilar e instalar
 
