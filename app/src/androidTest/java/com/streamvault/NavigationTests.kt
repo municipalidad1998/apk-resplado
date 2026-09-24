@@ -22,7 +22,7 @@ class NavigationTests {
         compose.onNodeWithText("Ajustes", useUnmergedTree = true).performClick()
         compose.onNodeWithText("A TU MANERA").assertIsDisplayed()
         compose.onNodeWithText("Crossfade").performClick()
-        compose.onNodeWithText("10 segundos").performClick()
+        compose.onNode(hasText("10 segundos") and hasAnyAncestor(isDialog())).performClick()
         compose.onNodeWithText("10 segundos · curva de potencia constante").assertIsDisplayed()
         compose.onNodeWithText("Playlists", useUnmergedTree = true).performClick()
         compose.onNodeWithText(" Crear playlist").performClick()

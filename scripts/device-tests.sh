@@ -6,7 +6,7 @@ adb install -r apks/app/app-debug.apk
 adb install -r apks/test/app-debug-androidTest.apk
 adb logcat -c
 set +e
-adb shell am instrument -w com.streamvault.test/androidx.test.runner.AndroidJUnitRunner > device-reports/instrumentation.txt 2>&1
+adb shell am instrument -w -r com.streamvault.test/androidx.test.runner.AndroidJUnitRunner > device-reports/instrumentation.txt 2>&1
 runner_result=$?
 cat device-reports/instrumentation.txt
 adb logcat -d > device-reports/logcat.txt
