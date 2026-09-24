@@ -181,12 +181,44 @@ private fun OffsetDialog(vm: LibraryViewModel, track: Track, busy: Boolean, dism
 private fun SeparationDialog(vm: LibraryViewModel, track: Track, dismiss: () -> Unit) {
     var availability by remember { mutableStateOf<Availability?>(null) }
     LaunchedEffect(Unit) { availability = vm.app.separation.provider.availability(vm.app) }
+    val workFlow = remember(track.id) { androidx.work.WorkManager.getInstance(vm.app).getWorkInfosForUniqueWorkFlow("separate-${track.id}") }
+    val works by workFlow.collectAsStateWithLifecycle(emptyList())
+    val work = works.firstOrNull()
+    val running = work?.state == androidx.work.WorkInfo.State.RUNNING || work?.state == androidx.work.WorkInfo.State.ENQUEUED
+    var result by remember(work?.state) { mutableStateOf<Track?>(null) }
+    LaunchedEffect(work?.state) { work?.outputData?.getString("instrumental")?.let { result = vm.app.library.track(it) } }
+    val export = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("audio/*")) { uri ->
+        if (uri != null) result?.let { audio -> vm.task {
+            withContext(Dispatchers.IO) {
+                vm.app.contentResolver.openInputStream(Uri.parse(audio.uri))!!.use { input ->
+                    vm.app.contentResolver.openOutputStream(uri)!!.use { output -> input.copyTo(output) }
+                }
+            }
+            vm.notify("Instrumental exportado. El original permanece intacto.")
+        } }
+    }
     AlertDialog(onDismissRequest = dismiss, title = { Text("Quitar voz") }, text = {
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Icon(Icons.Rounded.AutoAwesome, null, tint = MaterialTheme.colorScheme.primary)
             Text("Voz e instrumental", style = MaterialTheme.typography.titleMedium)
-            Text(when (val value = availability) { is Availability.Unavailable -> value.reason; Availability.Ready -> "Proveedor disponible: ${vm.app.separation.provider.name}. Integra su ejecución con SeparationWorker antes de distribuir este módulo."; null -> "Comprobando motor…" })
+            Text(when (val value = availability) { is Availability.Unavailable -> value.reason; Availability.Ready -> "Motor: ${vm.app.separation.provider.name}"; null -> "Comprobando motor…" })
+            if (running) {
+                val percent = work?.progress?.getInt("percent", 0) ?: 0
+                Text("Procesando audio… $percent%")
+                LinearProgressIndicator(progress = { percent / 100f }, modifier = Modifier.fillMaxWidth())
+                Text(work?.progress?.getString("stage").orEmpty(), style = MaterialTheme.typography.bodySmall)
+                TextButton(onClick = { androidx.work.WorkManager.getInstance(vm.app).cancelUniqueWork("separate-${track.id}") }) { Text("Cancelar procesamiento") }
+            } else if (availability == Availability.Ready) {
+                Button(onClick = { com.streamvault.processing.SeparationWorker.enqueue(vm.app, track) }) { Text("Separar voz e instrumental") }
+            }
+            work?.outputData?.getString("error")?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            result?.let { audio ->
+                TextButton(onClick = { vm.play(track) }) { Text("Escuchar original") }
+                TextButton(onClick = { vm.play(audio) }) { Text("Escuchar instrumental") }
+                TextButton(onClick = { vm.task { work?.outputData?.getString("vocals")?.let { vm.app.library.track(it)?.let { voice -> vm.play(voice) } } } }) { Text("Escuchar voz") }
+                Button(onClick = { export.launch(audio.fileName) }) { Text("Guardar instrumental como…") }
+            }
             Text("Tu archivo original siempre se conserva.", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-    }, confirmButton = { TextButton(onClick = dismiss) { Text("Entendido") } })
+    }, confirmButton = { TextButton(onClick = dismiss) { Text("Cerrar") } })
 }
