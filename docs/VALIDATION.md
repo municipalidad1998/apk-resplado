@@ -90,3 +90,14 @@ Hasta la 2.1 cada compilación de CI usaba una clave de depuración distinta, as
 actualización exigía desinstalar. Desde `54c3b51` el repositorio incluye `keystore/lumina.jks`,
 generado por el propio flujo, y todas las compilaciones comparten esa firma. Si en el futuro se
 usa el secreto `KEYSTORE_BASE64`, conviene borrar el archivo del repositorio.
+
+## Resultado verificado 2.3.0 · run 36201828295 · código `acbed30`
+
+- **Build:** 35/35 pruebas JVM, Android Lint y compilación del APK.
+- **Dispositivo:** 10/10 pruebas instrumentadas en Android 15 / API 35.
+- **Publicación:** release `v2.3.0` con `reproductor-denilson-2.3.0.apk` (21 520 312 bytes), misma firma que la 2.2 (se actualiza sin desinstalar).
+- **Pruebas nuevas:**
+  - JVM: `LoudnessMathTest` (ganancia, amplificación, atenuación, topes, etiquetas) y `LoudnessMath` sin medición.
+  - Instrumentadas: `measuresTheRealLoudnessOfAFile` decodifica un WAV de 440 Hz generado en el emulador y comprueba que el nivel medido cae en −14,2 ± 1,5 dBFS, que resulta en atenuación y no en amplificación; `loudnessColumnSurvivesUpgradeFromVersionTwo` migra 2 → 3 manteniendo final útil y crossfade.
+- **Corrección encontrada por las pruebas:** la prueba de migración 1 → 2 falló con «A migration from 1 to 3 was required but not found»; la corrección fue registrar también `MIGRATION_2_3` en la prueba (la app ya registraba ambos pasos).
+- **No probado en dispositivo:** la amplificación real con `LoudnessEnhancer` (el emulador no garantiza el efecto), percepción subjetiva del nivelado y comportamiento con 10 000 pistas.
