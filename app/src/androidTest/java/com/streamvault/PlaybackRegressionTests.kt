@@ -153,12 +153,16 @@ class PlaybackRegressionTests {
         raw.execSQL("ALTER TABLE tracks DROP COLUMN playbackEndMs")
         raw.execSQL("ALTER TABLE tracks DROP COLUMN crossfadeSeconds")
         raw.execSQL("DROP TABLE room_master_table")
+        raw.execSQL("ALTER TABLE tracks DROP COLUMN loudnessDb")
         raw.version = 1; raw.close()
-        val upgraded = Room.databaseBuilder(app, LibraryDatabase::class.java, name).addMigrations(LibraryDatabase.MIGRATION_1_2).build()
+        // The app registers every step (1->2->3); a real update from the oldest schema needs them all.
+        val upgraded = Room.databaseBuilder(app, LibraryDatabase::class.java, name)
+            .addMigrations(LibraryDatabase.MIGRATION_1_2, LibraryDatabase.MIGRATION_2_3).build()
         try {
             assertTrue(upgraded.library().track("kept")!!.favorite)
             assertEquals(11000L, upgraded.library().track("kept")!!.manualOffsetMs)
             assertNull(upgraded.library().track("kept")!!.playbackEndMs)
+            assertNull(upgraded.library().track("kept")!!.loudnessDb)
             assertEquals(1, upgraded.library().getPlaylistTracks("list").size)
         } finally { upgraded.close(); app.deleteDatabase(name) }
     }
