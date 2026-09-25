@@ -1,6 +1,6 @@
 package com.streamvault.playback
 
-import android.media.AudioEffect
+import android.media.audiofx.AudioEffect
 import android.media.audiofx.LoudnessEnhancer
 import android.util.Log
 
