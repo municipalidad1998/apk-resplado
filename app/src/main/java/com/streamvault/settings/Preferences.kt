@@ -21,7 +21,9 @@ data class PlayerSettings(
     val largeCovers: Boolean = true,
     val excludedFolders: String = "",
     val autoUpdate: Boolean = true,
-    val dynamicColor: Boolean = true
+    val dynamicColor: Boolean = true,
+    val normalize: Boolean = true,
+    val targetLoudnessDb: Int = -16
 ) { val analysisKey get() = "rms-v3:$thresholdDb:$minimumSilence" }
 
 class Preferences(context: Context) {
@@ -38,7 +40,9 @@ class Preferences(context: Context) {
         animations = prefs.getBoolean("animations", true), largeCovers = prefs.getBoolean("covers", true),
         excludedFolders = prefs.getString("excluded", "")!!,
         autoUpdate = prefs.getBoolean("autoUpdate", true),
-        dynamicColor = prefs.getBoolean("dynamicColor", true)
+        dynamicColor = prefs.getBoolean("dynamicColor", true),
+        normalize = prefs.getBoolean("normalize", true),
+        targetLoudnessDb = prefs.getInt("targetLoudness", -16)
     )
     fun update(change: (PlayerSettings) -> PlayerSettings) {
         val s = change(mutable.value)
@@ -47,7 +51,8 @@ class Preferences(context: Context) {
             .putBoolean("scan", s.autoScan).putBoolean("autoplay", s.autoPlay).putBoolean("shuffle", s.shuffle)
             .putInt("repeat", s.repeat).putBoolean("fades", s.fades).putBoolean("animations", s.animations)
             .putBoolean("covers", s.largeCovers).putString("excluded", s.excludedFolders)
-            .putBoolean("autoUpdate", s.autoUpdate).putBoolean("dynamicColor", s.dynamicColor).apply()
+            .putBoolean("autoUpdate", s.autoUpdate).putBoolean("dynamicColor", s.dynamicColor)
+            .putBoolean("normalize", s.normalize).putInt("targetLoudness", s.targetLoudnessDb).apply()
         mutable.value = s
     }
     fun roots(): Set<String> = prefs.getStringSet("roots", emptySet())!!.toSet()

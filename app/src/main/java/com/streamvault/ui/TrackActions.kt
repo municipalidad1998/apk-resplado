@@ -60,6 +60,7 @@ fun TrackActions(vm: LibraryViewModel, initialTrack: Track, dismiss: () -> Unit)
                 Triple("Editar información", Icons.Rounded.Edit) { action = "edit" },
                 Triple("Cambiar portada", Icons.Rounded.Image) { image.launch(arrayOf("image/*")) },
                 Triple("Inicio y transición / crossfade", Icons.Rounded.GraphicEq) { action = "offset" },
+                Triple("Medir volumen y nivelar", Icons.Rounded.VolumeUp) { vm.measureLoudness(track); dismiss() },
                 Triple("Quitar voz · requiere modelo", Icons.Rounded.MicOff) { action = "separate" },
                 Triple("Buscar en YouTube", Icons.Rounded.PlayCircle) { runAndClose { YouTubeLinks.open(context, YouTubeLinks.query(track.title, track.artist)) } },
                 Triple("Compartir", Icons.Rounded.Share) {

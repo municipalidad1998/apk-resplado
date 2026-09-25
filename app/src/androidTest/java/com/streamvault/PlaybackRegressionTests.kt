@@ -9,6 +9,7 @@ import androidx.room.Room
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.streamvault.data.*
+import com.streamvault.playback.LoudnessMath
 import com.streamvault.playback.PlaybackEvents
 import com.streamvault.ui.LibraryViewModel
 import com.streamvault.ui.MainActivity
@@ -104,6 +105,40 @@ class PlaybackRegressionTests {
             app.library.hide(first.id); app.library.hide(second.id)
             app.preferences.update { settings }; a.delete(); b.delete()
         }
+    }
+
+    @Test fun measuresTheRealLoudnessOfAFile() = runBlocking<Unit> {
+        val file = wav("regression-loudness.wav", 20, 0)
+        try {
+            val measured = withContext(Dispatchers.IO) { com.streamvault.analysis.LoudnessAnalyzer(app).measure(android.net.Uri.fromFile(file).toString()) }
+            // 9000/32768 sine: peak about -11.2 dBFS, RMS about -14.2 dBFS.
+            assertEquals(-14.2f, measured.rmsDb, 1.5f)
+            assertTrue(measured.rmsDb > LoudnessMath.SILENCE_DB)
+            assertEquals(0, LoudnessMath.boostMillibels(LoudnessMath.gainDb(-16f, measured.rmsDb))) // louder than target -> attenuate
+            assertTrue(LoudnessMath.attenuation(LoudnessMath.gainDb(-16f, measured.rmsDb)) < 1f)
+        } finally { file.delete() }
+    }
+
+    @Test fun loudnessColumnSurvivesUpgradeFromVersionTwo() = runBlocking<Unit> {
+        val name = "loudness-migration.db"
+        app.deleteDatabase(name)
+        val db = Room.databaseBuilder(app, LibraryDatabase::class.java, name).build()
+        db.library().insert(Track("kept", "content://test/2", "file.wav", "Conservar", playbackEndMs = 200000, crossfadeSeconds = 10))
+        db.close()
+        val raw = android.database.sqlite.SQLiteDatabase.openDatabase(app.getDatabasePath(name).path, null, 0)
+        raw.execSQL("ALTER TABLE tracks DROP COLUMN loudnessDb")
+        raw.execSQL("DROP TABLE room_master_table")
+        raw.version = 2; raw.close()
+        val upgraded = Room.databaseBuilder(app, LibraryDatabase::class.java, name)
+            .addMigrations(LibraryDatabase.MIGRATION_1_2, LibraryDatabase.MIGRATION_2_3).build()
+        try {
+            val track = upgraded.library().track("kept")!!
+            assertNull(track.loudnessDb)
+            assertEquals(200000L, track.playbackEndMs)
+            assertEquals(10, track.crossfadeSeconds)
+            upgraded.library().loudness("kept", -21.5f)
+            assertEquals(-21.5f, upgraded.library().track("kept")!!.loudnessDb!!, 0.01f)
+        } finally { upgraded.close(); app.deleteDatabase(name) }
     }
 
     @Test fun migrationKeepsLibraryAndPlaylistWhenUpdatingFromVersionOne() = runBlocking<Unit> {

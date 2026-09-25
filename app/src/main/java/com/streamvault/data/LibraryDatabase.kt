@@ -30,6 +30,7 @@ data class Track(
     val manualOffsetMs: Long? = null,
     val playbackEndMs: Long? = null,
     val crossfadeSeconds: Int? = null,
+    val loudnessDb: Float? = null,
     val analysisKey: String = "",
     val waveform: String = "",
     val hidden: Boolean = false,
@@ -59,16 +60,18 @@ data class QueueEntry(@PrimaryKey val position: Int, val trackId: String)
 /** Lean projection: the full playback queue never loads waveform blobs or image pixels. */
 data class QueueRecord(val id: String, val uri: String, val title: String, val artist: String,
                        val album: String, val durationMs: Long, val cover: String?, val customName: String,
-                       val detectedOffsetMs: Long, val manualOffsetMs: Long?, val playbackEndMs: Long?, val crossfadeSeconds: Int?) {
+                       val detectedOffsetMs: Long, val manualOffsetMs: Long?, val playbackEndMs: Long?, val crossfadeSeconds: Int?,
+                       val loudnessDb: Float? = null) {
     fun toTrack() = Track(id, uri, "", title, artist = artist, album = album, durationMs = durationMs,
-        cover = cover, customName = customName, detectedOffsetMs = detectedOffsetMs, manualOffsetMs = manualOffsetMs, playbackEndMs = playbackEndMs, crossfadeSeconds = crossfadeSeconds)
+        cover = cover, customName = customName, detectedOffsetMs = detectedOffsetMs, manualOffsetMs = manualOffsetMs,
+        playbackEndMs = playbackEndMs, crossfadeSeconds = crossfadeSeconds, loudnessDb = loudnessDb)
 }
 
 @Dao
 interface LibraryDao {
     @Query("SELECT * FROM tracks WHERE hidden = 0 AND available = 1 AND (:sort != 'recent' OR lastPlayed > 0) AND (:source = '' OR source = :source) AND (:favorite = 0 OR favorite = 1) AND (:folder = '' OR folder = :folder) AND (:artist = '' OR artist = :artist) AND (:album = '' OR album = :album) AND (:genre = '' OR genre = :genre) AND (title LIKE :query ESCAPE '\\' OR customName LIKE :query ESCAPE '\\' OR artist LIKE :query ESCAPE '\\' OR album LIKE :query ESCAPE '\\' OR genre LIKE :query ESCAPE '\\' OR folder LIKE :query ESCAPE '\\' OR tags LIKE :query ESCAPE '\\' OR fileName LIKE :query ESCAPE '\\') ORDER BY CASE WHEN :sort = 'recent' THEN lastPlayed WHEN :sort = 'added' THEN addedAt ELSE 0 END DESC, title COLLATE NOCASE")
     fun page(query: String, source: String, favorite: Boolean, folder: String, artist: String, album: String, genre: String, sort: String): PagingSource<Int, Track>
-    @Query("SELECT id, uri, title, artist, album, durationMs, cover, customName, detectedOffsetMs, manualOffsetMs, playbackEndMs, crossfadeSeconds FROM tracks WHERE hidden = 0 AND available = 1 AND (:sort != 'recent' OR lastPlayed > 0) AND (:source = '' OR source = :source) AND (:favorite = 0 OR favorite = 1) AND (:folder = '' OR folder = :folder) AND (:artist = '' OR artist = :artist) AND (:album = '' OR album = :album) AND (:genre = '' OR genre = :genre) AND (title LIKE :query ESCAPE '\\' OR customName LIKE :query ESCAPE '\\' OR artist LIKE :query ESCAPE '\\' OR album LIKE :query ESCAPE '\\' OR genre LIKE :query ESCAPE '\\' OR folder LIKE :query ESCAPE '\\' OR tags LIKE :query ESCAPE '\\' OR fileName LIKE :query ESCAPE '\\') ORDER BY CASE WHEN :sort = 'recent' THEN lastPlayed WHEN :sort = 'added' THEN addedAt ELSE 0 END DESC, title COLLATE NOCASE")
+    @Query("SELECT id, uri, title, artist, album, durationMs, cover, customName, detectedOffsetMs, manualOffsetMs, playbackEndMs, crossfadeSeconds, loudnessDb FROM tracks WHERE hidden = 0 AND available = 1 AND (:sort != 'recent' OR lastPlayed > 0) AND (:source = '' OR source = :source) AND (:favorite = 0 OR favorite = 1) AND (:folder = '' OR folder = :folder) AND (:artist = '' OR artist = :artist) AND (:album = '' OR album = :album) AND (:genre = '' OR genre = :genre) AND (title LIKE :query ESCAPE '\\' OR customName LIKE :query ESCAPE '\\' OR artist LIKE :query ESCAPE '\\' OR album LIKE :query ESCAPE '\\' OR genre LIKE :query ESCAPE '\\' OR folder LIKE :query ESCAPE '\\' OR tags LIKE :query ESCAPE '\\' OR fileName LIKE :query ESCAPE '\\') ORDER BY CASE WHEN :sort = 'recent' THEN lastPlayed WHEN :sort = 'added' THEN addedAt ELSE 0 END DESC, title COLLATE NOCASE")
     suspend fun playbackQueue(query: String, source: String, favorite: Boolean, folder: String, artist: String, album: String, genre: String, sort: String): List<QueueRecord>
     @Query("SELECT * FROM tracks WHERE hidden = 0 AND available = 1 ORDER BY lastPlayed DESC, addedAt DESC LIMIT 20")
     fun home(): Flow<List<Track>>
@@ -95,7 +98,9 @@ interface LibraryDao {
     @Query("SELECT * FROM tracks WHERE hidden = 0 AND available = 1 AND analysisKey != :key AND analysisKey != 'failed:' || :key LIMIT 25") suspend fun pendingAnalysis(key: String): List<Track>
     @Query("UPDATE tracks SET playbackEndMs = :end, crossfadeSeconds = :seconds WHERE id = :id")
     suspend fun transition(id: String, end: Long?, seconds: Int?)
-    @Query("SELECT tracks.id, uri, title, artist, album, durationMs, cover, customName, detectedOffsetMs, manualOffsetMs, playbackEndMs, crossfadeSeconds FROM tracks INNER JOIN queue ON tracks.id = trackId WHERE available = 1 AND hidden = 0 ORDER BY position")
+    @Query("UPDATE tracks SET loudnessDb = :db WHERE id = :id")
+    suspend fun loudness(id: String, db: Float?)
+    @Query("SELECT tracks.id, uri, title, artist, album, durationMs, cover, customName, detectedOffsetMs, manualOffsetMs, playbackEndMs, crossfadeSeconds, loudnessDb FROM tracks INNER JOIN queue ON tracks.id = trackId WHERE available = 1 AND hidden = 0 ORDER BY position")
     fun observeQueueCues(): Flow<List<QueueRecord>>
     @Query("SELECT * FROM locations WHERE uri = :uri") suspend fun location(uri: String): AudioLocation?
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun location(location: AudioLocation)
@@ -125,13 +130,13 @@ interface LibraryDao {
         clearPlaylist(id); tracks.forEachIndexed { i, t -> entry(PlaylistEntry(id, t, i)) }
     }
     @Query("SELECT * FROM tracks WHERE album = :album AND hidden = 0 AND available = 1 ORDER BY title") suspend fun albumTracks(album: String): List<Track>
-    @Query("SELECT tracks.id, uri, title, artist, album, durationMs, cover, customName, detectedOffsetMs, manualOffsetMs, playbackEndMs, crossfadeSeconds FROM tracks INNER JOIN queue ON tracks.id = trackId WHERE available = 1 AND hidden = 0 ORDER BY position") suspend fun savedQueue(): List<QueueRecord>
+    @Query("SELECT tracks.id, uri, title, artist, album, durationMs, cover, customName, detectedOffsetMs, manualOffsetMs, playbackEndMs, crossfadeSeconds, loudnessDb FROM tracks INNER JOIN queue ON tracks.id = trackId WHERE available = 1 AND hidden = 0 ORDER BY position") suspend fun savedQueue(): List<QueueRecord>
     @Query("DELETE FROM queue") suspend fun clearQueue()
     @Insert suspend fun queue(entries: List<QueueEntry>)
     @Transaction suspend fun saveQueue(ids: List<String>) { clearQueue(); queue(ids.mapIndexed { i, id -> QueueEntry(i, id) }) }
 }
 
-@Database(entities = [Track::class, AudioLocation::class, Playlist::class, PlaylistEntry::class, QueueEntry::class], version = 2, exportSchema = true)
+@Database(entities = [Track::class, AudioLocation::class, Playlist::class, PlaylistEntry::class, QueueEntry::class], version = 3, exportSchema = true)
 abstract class LibraryDatabase : RoomDatabase() {
     abstract fun library(): LibraryDao
     companion object {
@@ -139,6 +144,11 @@ abstract class LibraryDatabase : RoomDatabase() {
             override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE tracks ADD COLUMN playbackEndMs INTEGER")
                 db.execSQL("ALTER TABLE tracks ADD COLUMN crossfadeSeconds INTEGER")
+            }
+        }
+        val MIGRATION_2_3 = object : androidx.room.migration.Migration(2, 3) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE tracks ADD COLUMN loudnessDb REAL")
             }
         }
     }

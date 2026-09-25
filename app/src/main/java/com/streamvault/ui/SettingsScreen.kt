@@ -77,7 +77,13 @@ fun SettingsScreen(vm: LibraryViewModel, permission: () -> Unit, folder: () -> U
         item {
             SectionTitle("Audio")
             Setting("Calidad original", "Sin transcodificación. La compatibilidad depende del decodificador de Android.")
-            Setting("Normalización de volumen", "No disponible en esta versión. El crossfade controla las ganancias, no normaliza el volumen percibido.")
+            Toggle("Volumen parejo", "Nivela tus canciones para que ninguna suene más bajo que las demás", settings.normalize) { value -> update { it.copy(normalize = value) } }
+            Setting("Nivel objetivo", if (settings.normalize) "${settings.targetLoudnessDb} dBFS RMS · ${if (settings.targetLoudnessDb >= -14) "más fuerte" else if (settings.targetLoudnessDb <= -20) "más suave" else "equilibrado"}" else "Desactivado", { choose = "Nivel objetivo" })
+            Setting("Medir el volumen de tu biblioteca", "Analiza el volumen real de cada canción en segundo plano", { AnalysisWorker.enqueue(context); vm.notify("Midiendo el volumen de la biblioteca en segundo plano") })
+            Text("Se decodifica el audio de cada pista para medir su volumen real y se guarda un ajuste por canción. "
+                + "Las canciones más bajas se amplifican con el efecto de sonido del sistema y las más fuertes se atenúan; el archivo original nunca cambia. "
+                + "Es una medición RMS de una ventana de 90 segundos, no loudness LUFS de broadcast.",
+                fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 6.dp))
             Setting("Ecualizador del dispositivo", "Disponible solo si Android incluye un panel compatible", {
                 try {
                     context.startActivity(Intent(AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL)
@@ -98,6 +104,7 @@ fun SettingsScreen(vm: LibraryViewModel, permission: () -> Unit, folder: () -> U
             "Repetición" -> listOf("0" to "Desactivada", "1" to "Una canción", "2" to "Toda la cola")
             "Sensibilidad" -> listOf("-60" to "Alta · −60 dBFS", "-45" to "Equilibrada · −45 dBFS", "-30" to "Baja · −30 dBFS")
             "Silencio mínimo" -> listOf(0, 1, 2, 3, 5).map { it.toString() to "$it segundos" }
+            "Nivel objetivo" -> listOf(-22, -20, -18, -16, -14, -12).map { it.toString() to "$it dBFS RMS" }
             else -> listOf("system" to "Automático según el sistema", "dark" to "Oscuro", "light" to "Claro")
         }
         AlertDialog(onDismissRequest = { choose = "" }, title = { Text(choose) }, text = {
@@ -106,7 +113,7 @@ fun SettingsScreen(vm: LibraryViewModel, permission: () -> Unit, folder: () -> U
                 update { old -> when (choose) {
                     "Crossfade" -> old.copy(crossfade = key.toInt()); "Saltar ± segundos" -> old.copy(skipSeconds = key.toInt())
                     "Repetición" -> old.copy(repeat = key.toInt()); "Sensibilidad" -> old.copy(thresholdDb = key.toInt())
-                    "Silencio mínimo" -> old.copy(minimumSilence = key.toInt()); else -> old.copy(theme = key)
+                    "Silencio mínimo" -> old.copy(minimumSilence = key.toInt()); "Nivel objetivo" -> old.copy(targetLoudnessDb = key.toInt()); else -> old.copy(theme = key)
                 } }
                 if (reanalyze && vm.settings.value.detectSilence) AnalysisWorker.enqueue(context)
                 choose = ""

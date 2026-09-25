@@ -18,11 +18,24 @@ class AnalysisRepository(private val app: LuminaApp) {
         try {
             val result = withTimeout(45_000) { SilenceAnalyzer(app).analyze(track.uri, settings.thresholdDb, settings.minimumSilence) }
             app.library.analysis(id, result.offsetMs, result.waveform, settings.analysisKey)
+            measureLoudness(track, result.offsetMs, force)
             app.library.track(id)
         } catch (e: Exception) {
             if (e is CancellationException && e !is kotlinx.coroutines.TimeoutCancellationException) throw e
             app.library.analysis(id, track.detectedOffsetMs, track.waveform, "failed:${settings.analysisKey}")
             throw IllegalStateException("No se pudo analizar ${track.displayName}: ${e.localizedMessage}. Puedes fijar el inicio manualmente.", e)
         }
+    }
+
+    /**
+     * Loudness is measured after the silence analysis because it should read music, not the
+     * leading silence. A failure here never invalidates the silence offset.
+     */
+    private suspend fun measureLoudness(track: Track, offsetMs: Long, force: Boolean) {
+        if (!force && track.loudnessDb != null) return
+        runCatching {
+            val result = withTimeout(45_000) { LoudnessAnalyzer(app).measure(track.uri, offsetMs) }
+            if (result.rmsDb > LoudnessAnalyzer.SILENCE_DB) app.library.loudness(track.id, result.rmsDb)
+        }.onFailure { android.util.Log.w("Loudness", "No se pudo medir ${track.displayName}: ${it.message}") }
     }
 }

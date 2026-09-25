@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.streamvault.data.Track
+import com.streamvault.playback.LoudnessMath
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -136,6 +137,7 @@ fun FullPlayer(vm: LibraryViewModel, track: Track, state: PlaybackState, dismiss
                                 Icon(Icons.Rounded.VolumeUp, null, Modifier.size(18.dp), MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                             if (track.offset(settings.detectSilence) > 0) Text("Inicio inteligente · ${"%.1f".format(track.offset(settings.detectSilence) / 1000.0)} s", color = MaterialTheme.colorScheme.primary, fontSize = 11.sp)
+                            if (settings.normalize) Text("Volumen parejo · ${LoudnessMath.label(LoudnessMath.gainDb(settings.targetLoudnessDb.toFloat(), track.loudnessDb), track.loudnessDb != null)}", color = MaterialTheme.colorScheme.primary, fontSize = 11.sp)
                         }
                     }
                     if (landscape) Row(verticalAlignment = Alignment.CenterVertically) {

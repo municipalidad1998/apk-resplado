@@ -44,6 +44,8 @@ class PlaybackService : MediaSessionService() {
     private var prefetchJob: Job? = null
     private var prefetchId: String? = null
     private val preparedIds = mutableSetOf<String>()
+    private val normalizer = LoudnessNormalizer()
+    private var attenuation = 1f
     private val attributes = AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build()
 
     override fun onCreate() {
@@ -70,6 +72,8 @@ class PlaybackService : MediaSessionService() {
                 active.repeatMode = settings.repeat
                 active.shuffleModeEnabled = settings.shuffle
                 active.pauseAtEndOfMediaItems = !settings.autoPlay
+                active.currentMediaItem?.let { applyTrackGain(it, active) }
+                if (!settings.normalize) normalizer.release()
                 preparedIds.clear(); prefetchJob?.cancel(); prefetchId = null
             }
         }
@@ -107,7 +111,11 @@ class PlaybackService : MediaSessionService() {
                 if (duration > 0) scope.launch { app.library.discoveredDuration(id, duration) }
             }
         }
-        override fun onAudioSessionIdChanged(audioSessionId: Int) { PlaybackEvents.audioSessionId.value = audioSessionId }
+        override fun onAudioSessionIdChanged(audioSessionId: Int) {
+            PlaybackEvents.audioSessionId.value = audioSessionId
+            val item = active.currentMediaItem ?: return
+            normalizer.setBoost(audioSessionId, boostOf(item))
+        }
         override fun onPlayerError(error: PlaybackException) {
             cancelMix()
             PlaybackEvents.error.value = "No se pudo reproducir este archivo (${error.errorCodeName}). Comprueba el formato y el acceso a la carpeta."
@@ -177,7 +185,7 @@ class PlaybackService : MediaSessionService() {
             if (preparingIndex != C.INDEX_UNSET) cancelMix()
             val inGain = if (settings.fades && introAt >= 0) ((position - introAt) / 450f).coerceIn(0f, 1f) else 1f
             val outGain = if (settings.fades && !active.hasNextMediaItem()) ((duration - position) / 450f).coerceIn(0f, 1f) else 1f
-            active.volume = minOf(inGain, outGain)
+            applyVolume(active, minOf(inGain, outGain))
             return
         }
         val nextIndex = active.nextMediaItemIndex
@@ -196,6 +204,7 @@ class PlaybackService : MediaSessionService() {
             incoming.shuffleModeEnabled = active.shuffleModeEnabled
             incoming.pauseAtEndOfMediaItems = active.pauseAtEndOfMediaItems
             incoming.volume = 0f
+            normalizer.setBoost(incoming.audioSessionId, boostOf(next))
             incoming.prepare()
         }
         if (preparingIndex != C.INDEX_UNSET && fadeStartPosition < 0 && remaining <= requested && incoming.playbackState == Player.STATE_READY) {
@@ -209,9 +218,35 @@ class PlaybackService : MediaSessionService() {
             if (incoming.playerError != null || incoming.playbackState == Player.STATE_BUFFERING) { cancelMix(); return }
             val progress = (position - fadeStartPosition).toFloat() / fadeLength
             val (outGain, inGain) = MixMath.gains(progress)
-            active.volume = outGain; incoming.volume = inGain
+            applyVolume(active, outGain)
+            incoming.volume = (inGain * attenuationForIncoming()).coerceIn(0f, 1f)
             if (progress >= 1f) finishMix()
-        } else active.volume = 1f
+        } else applyVolume(active, 1f)
+    }
+    /** Player volume is always the fade/mix gain times the normalization attenuation. */
+    private fun applyVolume(player: ExoPlayer, gain: Float) {
+        player.volume = (gain * if (player === active) attenuation else attenuationForIncoming()).coerceIn(0f, 1f)
+    }
+    private fun attenuationForIncoming(): Float {
+        val index = preparingIndex
+        if (index !in 0 until active.mediaItemCount) return 1f
+        return volumeOf(active.getMediaItemAt(index))
+    }
+    /** Gain in dB and resulting volume for one media item, using live Room cues when available. */
+    private fun gainOf(item: MediaItem): Float {
+        val settings = app.preferences.state.value
+        if (!settings.normalize) return 0f
+        val measured = cues[item.mediaId]?.loudnessDb ?: item.loudnessDb
+        return LoudnessMath.gainDb(settings.targetLoudnessDb.toFloat(), measured)
+    }
+    private fun volumeOf(item: MediaItem): Float = LoudnessMath.attenuation(gainOf(item))
+    private fun boostOf(item: MediaItem): Int = LoudnessMath.boostMillibels(gainOf(item))
+    private fun applyTrackGain(item: MediaItem, player: ExoPlayer) {
+        attenuation = volumeOf(item)
+        val boost = boostOf(item)
+        val session = player.audioSessionId
+        if (session > 0) normalizer.setBoost(session, boost)
+        if (player === active) applyVolume(player, 1f)
     }
     private fun isOriginal(item: MediaItem) = item.mediaMetadata.extras?.getBoolean("original") == true
     private fun startOf(item: MediaItem): Long = if (isOriginal(item)) 0 else
@@ -240,6 +275,7 @@ class PlaybackService : MediaSessionService() {
                 if (generation != resolveGeneration || active !== player) return@launch
                 if (track != null) cues[item.mediaId] = track
                 preparedIds += item.mediaId
+                applyTrackGain(item, player)
                 val start = startOf(item)
                 if (!soughtWhileAnalyzing && player.currentPosition < start) seekInternally(start)
                 introAt = start
@@ -276,7 +312,11 @@ class PlaybackService : MediaSessionService() {
         active = incoming; incoming = previous
         active.setAudioAttributes(attributes, true)
         active.setHandleAudioBecomingNoisy(true)
-        active.volume = 1f
+        normalizer.clear(incoming.audioSessionId)
+        val item = active.currentMediaItem
+        attenuation = item?.let(::volumeOf) ?: 1f
+        normalizer.setBoost(active.audioSessionId, item?.let(::boostOf) ?: 0)
+        applyVolume(active, 1f)
         active.addListener(listener)
         session?.setPlayer(active)
         PlaybackEvents.audioSessionId.value = active.audioSessionId
@@ -290,8 +330,9 @@ class PlaybackService : MediaSessionService() {
     private fun cancelMix() {
         if (swapping) return
         preparingIndex = C.INDEX_UNSET; fadeStartPosition = -1
+        normalizer.clear(incoming.audioSessionId)
         incoming.stop(); incoming.clearMediaItems(); incoming.volume = 0f
-        active.volume = 1f
+        applyVolume(active, 1f)
         PlaybackEvents.mixing.value = false
     }
     private fun savePosition() {
@@ -300,6 +341,7 @@ class PlaybackService : MediaSessionService() {
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = session
     override fun onTaskRemoved(rootIntent: Intent?) { if (!active.playWhenReady && gateId == null) { stopSelf() } }
     override fun onDestroy() {
+        normalizer.release()
         savePosition(); ++resolveGeneration; scope.cancel(); PlaybackEvents.analyzing.value = null
         session?.release(); session = null
         active.release(); incoming.release()
