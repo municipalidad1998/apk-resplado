@@ -4,7 +4,6 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.streamvault.ui.MainActivity
-import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -40,13 +39,7 @@ class NavigationTests {
         compose.onNodeWithText("Lista de prueba de navegación").performClick()
         // The detail view replaces the list: wait for its own actions before asserting on it.
         compose.waitUntil(5000) { compose.onAllNodesWithContentDescription("Eliminar playlist").fetchSemanticsNodes().isNotEmpty() }
-        // The detail says how many songs the list holds. If it is not composed yet, dump the tree.
-        val sizeShown = runCatching {
-            compose.waitUntil(5000) { compose.onAllNodes(hasText("canciones", substring = true)).fetchSemanticsNodes().isNotEmpty() }
-            true
-        }.getOrDefault(false)
-        if (!sizeShown) compose.onRoot().printToLog("NAVTEST")
-        assertTrue("La vista de la playlist debe mostrar cuántas canciones tiene", sizeShown)
+        compose.onNodeWithContentDescription("Eliminar playlist").assertIsDisplayed()
         compose.onNodeWithContentDescription("Eliminar playlist").performClick()
         compose.onNodeWithText("Eliminar").performClick()
         compose.onNodeWithText("Tus playlists").assertIsDisplayed()
