@@ -151,6 +151,9 @@ private fun EditTrack(track: Track, dismiss: () -> Unit, save: (String, String, 
     var year by remember { mutableStateOf(if (track.date > 0) java.util.Calendar.getInstance().apply { timeInMillis = track.date }.get(java.util.Calendar.YEAR).toString() else "") }
     var number by remember { mutableStateOf(if (track.trackNumber > 0) track.trackNumber.toString() else "") }
     var disc by remember { mutableStateOf(if (track.discNumber > 0) track.discNumber.toString() else "") }
+    val confirm: () -> Unit = {
+        save(name, title, artist, album, genre, notes, tags, yearToMillis(year), number.toIntOrNull() ?: 0, disc.toIntOrNull() ?: 0)
+    }
     AlertDialog(onDismissRequest = dismiss, title = { Text("Hazlo tuyo") }, text = {
         Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("Solo se cambia la información en la app. El archivo original permanece intacto.", style = MaterialTheme.typography.bodySmall)
@@ -167,7 +170,7 @@ private fun EditTrack(track: Track, dismiss: () -> Unit, save: (String, String, 
             OutlinedTextField(tags, { tags = it }, label = { Text("Etiquetas") })
             OutlinedTextField(notes, { notes = it }, label = { Text("Descripción / notas") })
         }
-    }, confirmButton = { TextButton(onClick = { save(name, title, artist, album, genre, notes, tags, yearToMillis(year), number.toIntOrNull() ?: 0, disc.toIntOrNull() ?: 0) }) { Text("Guardar") } }, dismissButton = { TextButton(onClick = dismiss) { Text("Cancelar") } }))
+    }, confirmButton = { TextButton(onClick = confirm) { Text("Guardar") } }, dismissButton = { TextButton(onClick = dismiss) { Text("Cancelar") } }))
 }
 
 @Composable
