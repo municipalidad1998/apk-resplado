@@ -139,6 +139,11 @@ fun TrackActions(vm: LibraryViewModel, initialTrack: Track, dismiss: () -> Unit)
 private fun Info(label: String, value: String) { Column { Text(label, fontSize = 10.sp, color = MaterialTheme.colorScheme.primary); Spacer(Modifier.height(4.dp)); Text(value, fontSize = 13.sp) } }
 
 @Composable
+private fun yearToMillis(value: String): Long {
+    val year = value.toIntOrNull() ?: return -1L
+    return java.util.Calendar.getInstance().apply { clear(); set(java.util.Calendar.YEAR, year) }.timeInMillis
+}
+
 private fun EditTrack(track: Track, dismiss: () -> Unit, save: (String, String, String, String, String, String, String, Long, Int, Int) -> Unit) {
     var name by remember { mutableStateOf(track.customName) }; var title by remember { mutableStateOf(track.title) }
     var artist by remember { mutableStateOf(track.artist) }; var album by remember { mutableStateOf(track.album) }
@@ -162,10 +167,11 @@ private fun EditTrack(track: Track, dismiss: () -> Unit, save: (String, String, 
             OutlinedTextField(tags, { tags = it }, label = { Text("Etiquetas") })
             OutlinedTextField(notes, { notes = it }, label = { Text("Descripción / notas") })
         }
-    }, confirmButton = { TextButton(onClick = {
-        val parsedYear = year.toIntOrNull()?.let { java.util.Calendar.getInstance().apply { clear(); set(java.util.Calendar.YEAR, it) }.timeInMillis } ?: -1L
-        save(name, title, artist, album, genre, notes, tags, parsedYear, number.toIntOrNull() ?: 0, disc.toIntOrNull() ?: 0)
-    }) { Text("Guardar") } }, dismissButton = { TextButton(onClick = dismiss) { Text("Cancelar") } }))
+    }, confirmButton = {
+        TextButton(onClick = {
+            save(name, title, artist, album, genre, notes, tags, yearToMillis(year), number.toIntOrNull() ?: 0, disc.toIntOrNull() ?: 0)
+        }) { Text("Guardar") }
+    }, dismissButton = { TextButton(onClick = dismiss) { Text("Cancelar") } }))
 }
 
 @Composable
