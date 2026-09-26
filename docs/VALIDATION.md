@@ -101,3 +101,15 @@ usa el secreto `KEYSTORE_BASE64`, conviene borrar el archivo del repositorio.
   - Instrumentadas: `measuresTheRealLoudnessOfAFile` decodifica un WAV de 440 Hz generado en el emulador y comprueba que el nivel medido cae en −14,2 ± 1,5 dBFS, que resulta en atenuación y no en amplificación; `loudnessColumnSurvivesUpgradeFromVersionTwo` migra 2 → 3 manteniendo final útil y crossfade.
 - **Corrección encontrada por las pruebas:** la prueba de migración 1 → 2 falló con «A migration from 1 to 3 was required but not found»; la corrección fue registrar también `MIGRATION_2_3` en la prueba (la app ya registraba ambos pasos).
 - **No probado en dispositivo:** la amplificación real con `LoudnessEnhancer` (el emulador no garantiza el efecto), percepción subjetiva del nivelado y comportamiento con 10 000 pistas.
+
+## Resultado verificado 2.4.0 · run 36205627046 · código `5cfda39`
+
+- **Build:** 43/43 pruebas JVM, Android Lint y compilación del APK.
+- **Dispositivo:** 10/10 pruebas instrumentadas en Android 15 / API 35.
+- **Publicación:** release `v2.4.0` con `reproductor-denilson-2.4.0.apk` (21 554 197 bytes), misma firma estable.
+- **Pruebas nuevas (JVM):**
+  - `CompressorPresetTest`: presets ordenados de suave a fuerte y dentro de los rangos del efecto; la ganancia posterior combina maquillaje del preset con la corrección de nivel y se limita a +24 dB; el compresor sustituye al amplificador en lugar de sumarse.
+  - `SettingsBackupTest`: el respaldo incluye todos los ajustes, el importador reconoce cada valor, rechaza archivos que no son respaldo y escribe con los nombres históricos de SharedPreferences (`skipSeconds` → `skip`, `detectSilence` → `silence`, …).
+- **Correcciones que exigieron Lint:** `DynamicsProcessing` necesita API 28 (se aísla con `@RequiresApi` y una comprobación de versión), el constructor de `Limiter` lleva el parámetro `inUse`, las reglas de respaldo no pueden excluir rutas no incluidas y el receptor de instalación debe registrarse con `ContextCompat`.
+- **Incidencia de infraestructura:** el trabajo 108300678755 (run 36205196439) falló porque el runner no pudo descomprimir el paquete del emulador de Android; se relanzó con el código sin cambios y pasó.
+- **No probado en dispositivo:** el efecto del compresor sonando (el emulador no garantiza `DynamicsProcessing`), la instalación real de una actualización sobre otra y la restauración desde un respaldo.
