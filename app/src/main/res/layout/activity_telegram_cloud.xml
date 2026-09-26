@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#0D0D14"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <ImageButton
+            android:id="@+id/btnBackCloud"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_arrow_back" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="☁ Telegram Cloud"
+            android:textColor="#FFFFFF"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:layout_marginStart="8dp" />
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Tus archivos viven en Telegram aunque los borres del teléfono"
+        android:textColor="#666688"
+        android:textSize="11sp"
+        android:layout_marginVertical="6dp" />
+
+    <Button
+        android:id="@+id/btnUploadCloud"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:background="@drawable/btn_primary"
+        android:text="⬆ Subir archivos"
+        android:textColor="#FFFFFF"
+        android:textStyle="bold" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rvCloud"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="12dp" />
+
+    <TextView
+        android:id="@+id/tvEmptyCloud"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Nada en la nube todavía.\nSube archivos con el botón de arriba."
+        android:gravity="center"
+        android:textColor="#8888AA"
+        android:textSize="14sp"
+        android:padding="24dp"
+        android:visibility="gone" />
+</LinearLayout>

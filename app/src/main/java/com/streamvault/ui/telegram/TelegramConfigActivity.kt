@@ -1,13 +1,18 @@
 package com.streamvault.ui.telegram
 
 import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import com.streamvault.R
+import com.streamvault.StreamVaultApp
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 
 /**
  * ☁ Telegram Cloud — configuración MTProto (API ID, API Hash,
@@ -39,6 +44,8 @@ class TelegramConfigActivity : AppCompatActivity() {
             val apiId = etApiId.text.toString().trim()
             val apiHash = etApiHash.text.toString().trim()
             val phone = etPhone.text.toString().trim()
+            val code = etCode.text.toString().trim()
+            val pass = etPassword.text.toString()
             if (apiId.isEmpty() || apiHash.isEmpty() || phone.isEmpty()) {
                 Toast.makeText(this, "Completa API ID, API Hash y teléfono", Toast.LENGTH_LONG).show()
                 return@setOnClickListener
@@ -47,11 +54,32 @@ class TelegramConfigActivity : AppCompatActivity() {
                 .putString("api_id", apiId)
                 .putString("api_hash", apiHash)
                 .putString("phone", phone)
-                .putString("last_code", etCode.text.toString().trim())
-                .putString("twofa", etPassword.text.toString())
                 .apply()
-            Toast.makeText(this, "☁ Configuración guardada.\nLa conexión MTProto se activará en la próxima fase.", Toast.LENGTH_LONG).show()
-            finish()
+
+            // Flujo de autenticación MTProto (TDLib)
+            val client = StreamVaultApp.telegramClient
+            client.start()
+            lifecycleScope.launch {
+                client.authState.collectLatest { state ->
+                    when (state) {
+                        is com.streamvault.data.cloud.TelegramClient.AuthState.WaitPhone ->
+                            client.sendPhoneNumber(phone)
+                        is com.streamvault.data.cloud.TelegramClient.AuthState.WaitCode ->
+                            if (code.isNotEmpty()) client.sendCode(code)
+                        is com.streamvault.data.cloud.TelegramClient.AuthState.WaitPassword ->
+                            if (pass.isNotEmpty()) client.sendPassword(pass)
+                        is com.streamvault.data.cloud.TelegramClient.AuthState.Ready -> {
+                            Toast.makeText(this@TelegramConfigActivity, "☁ Telegram Cloud conectado", Toast.LENGTH_LONG).show()
+                            startActivity(Intent(this@TelegramConfigActivity, TelegramCloudActivity::class.java))
+                            finish()
+                        }
+                        is com.streamvault.data.cloud.TelegramClient.AuthState.Error ->
+                            Toast.makeText(this@TelegramConfigActivity, "Error: ${state.message}", Toast.LENGTH_LONG).show()
+                        else -> {}
+                    }
+                }
+            }
+            Toast.makeText(this, "Conectando con Telegram…", Toast.LENGTH_SHORT).show()
         }
     }
 }

@@ -76,7 +76,15 @@ class HomeHubActivity : AppCompatActivity() {
                 })
             },
             HubItem("☁", "Telegram Cloud") {
-                startActivity(Intent(this, TelegramConfigActivity::class.java))
+                val configured = getSharedPreferences("telegram_prefs", MODE_PRIVATE)
+                    .getString("api_id", "")?.isNotBlank() == true
+                startActivity(
+                    Intent(
+                        this,
+                        if (configured) com.streamvault.ui.telegram.TelegramCloudActivity::class.java
+                        else TelegramConfigActivity::class.java
+                    )
+                )
             },
             HubItem("🎶", "Playlists") {
                 startActivity(Intent(this, com.streamvault.ui.playlists.PlaylistsActivity::class.java))

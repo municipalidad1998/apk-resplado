@@ -143,6 +143,41 @@ class TelegramClient(private val context: Context) {
         return result.getLong("id") to (doc?.optString("id") ?: "")
     }
 
+    /**
+     * Descarga un archivo de Telegram al caché local (síncrono).
+     * Devuelve la ruta local cuando termina o null.
+     */
+    fun downloadRemoteFile(tgFileId: String): String? {
+        val req = JSONObject().put("@type", "downloadFile")
+            .put("file_id", tgFileId.toIntOrNull() ?: return null)
+            .put("priority", 32)
+            .put("offset", 0)
+            .put("limit", 0)
+            .put("synchronous", true)
+        val result = JSONObject(JsonClient.execute(clientId, req.toString()))
+        if (result.optString("@type") != "file") return null
+        val local = result.optJSONObject("local") ?: return null
+        return if (local.optBoolean("is_downloading_completed")) local.optString("path") else null
+    }
+
+    /** Historial del canal de almacenamiento. Devuelve (messageId, nombre, fileId). */
+    fun listStorageMessages(limit: Int = 100): List<Triple<Long, String, String>> {
+        if (storageChatId == 0L) return emptyList()
+        val req = JSONObject().put("@type", "getChatHistory")
+            .put("chat_id", storageChatId).put("message_id", 0)
+            .put("offset", 0).put("limit", limit).put("only_local", false)
+        val result = JSONObject(JsonClient.execute(clientId, req.toString()))
+        val msgs = result.optJSONArray("messages") ?: return emptyList()
+        val list = mutableListOf<Triple<Long, String, String>>()
+        for (i in 0 until msgs.length()) {
+            val m = msgs.optJSONObject(i) ?: continue
+            val doc = m.optJSONObject("content")?.optJSONObject("document") ?: continue
+            val fileId = doc.optJSONObject("document")?.optString("id") ?: ""
+            list.add(Triple(m.getLong("id"), doc.optString("file_name", "archivo"), fileId))
+        }
+        return list
+    }
+
     private fun send(query: JSONObject) {
         if (clientId != 0L) JsonClient.send(clientId, query.toString())
     }
