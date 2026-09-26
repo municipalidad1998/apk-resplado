@@ -82,7 +82,7 @@ object SettingsBackup {
         FIELDS.forEach { (json, key, kind) ->
             if (!root.has(json)) return@forEach
             when (kind) {
-                Kind.STRING -> { val value = root.optString(json); if (value.isNotEmpty()) { editor.putString(key, value); applied++ } }
+                Kind.STRING -> { editor.putString(key, root.optString(json)); applied++ }
                 Kind.INT -> { editor.putInt(key, root.getInt(json)); applied++ }
                 Kind.BOOL -> { editor.putBoolean(key, root.getBoolean(json)); applied++ }
             }
