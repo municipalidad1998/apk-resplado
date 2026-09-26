@@ -181,7 +181,10 @@ object SmartSearch {
         val titleMatches = scored.filter { it.score >= EXACT_TITLE }.let { exact ->
             if (exact.isEmpty()) emptyList() else {
                 val wanted = normalize(exact.first().candidate.title)
-                scored.filter { val title = normalize(it.candidate.title); title == wanted || title.startsWith("$wanted ") }
+                scored.filter { item ->
+                    val title = normalize(item.candidate.title)
+                    item.score >= KEEP_WITH_STRONG && (title == wanted || title.startsWith("$wanted "))
+                }
             }
         }
         val top = scored.maxOf { it.score }
