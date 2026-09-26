@@ -15,6 +15,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -78,7 +79,7 @@ fun PlaylistsScreen(vm: LibraryViewModel, menu: (Track) -> Unit, library: () -> 
         if (selected == null) {
             if (lists.isEmpty()) item { EmptyState("Una banda sonora para cada día", "Para trabajar, para desconectar, para volver a ese lugar. Tu primera colección empieza contigo.", Icons.Rounded.QueueMusic) }
             items(lists, key = { it.id }) { playlist ->
-                Row(Modifier.fillMaxWidth().clickable { selectedId = playlist.id }.padding(vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.fillMaxWidth().testTag("playlist-row").clickable { selectedId = playlist.id }.padding(vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
                     Cover(playlist.id, playlist.name, playlist.cover, Modifier.size(72.dp))
                     Column(Modifier.weight(1f).padding(horizontal = 16.dp)) {
                         Text(playlist.name, fontWeight = FontWeight.SemiBold)
