@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">StreamVault</string>
+    <string name="app_name">Reproductor de Música Denilson</string>
     <string name="live">En Vivo</string>
     <string name="movies">Películas</string>
     <string name="series">Series</string>

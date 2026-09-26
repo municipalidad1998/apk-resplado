@@ -1,42 +1,102 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#0D0D14"
-    android:padding="20dp">
+    android:background="@color/den_bg">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="StreamVault"
-        android:textColor="#FFFFFF"
-        android:textSize="28sp"
-        android:textStyle="bold"
-        android:layout_marginTop="12dp" />
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Tu centro multimedia · Cada fuente es independiente"
-        android:textColor="#8888AA"
-        android:textSize="13sp"
-        android:layout_marginBottom="20dp" />
-
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/rvHub"
+    <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1" />
+        android:layout_weight="1">
 
-    <!-- 🎵 Mini reproductor -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingHorizontal="20dp">
+
+            <!-- Identidad -->
+            <TextView
+                android:id="@+id/tvGreeting"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="28dp"
+                android:text="Buenos días"
+                android:textColor="@color/den_text"
+                android:textSize="26sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="¿Qué quieres escuchar?"
+                android:textColor="@color/den_text_dim"
+                android:textSize="15sp"
+                android:layout_marginBottom="18dp" />
+
+            <!-- Buscador -->
+            <TextView
+                android:id="@+id/btnSearchEntry"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="18dp"
+                android:background="@drawable/search_bg"
+                android:text="🔎  Buscar canciones, artistas, álbumes…"
+                android:textColor="@color/den_text_muted"
+                android:textSize="14sp" />
+
+            <!-- Escuchado recientemente -->
+            <TextView
+                android:id="@+id/tvRecentHeader"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Escuchado recientemente"
+                android:textColor="@color/den_text"
+                android:textSize="17sp"
+                android:textStyle="bold"
+                android:layout_marginTop="26dp"
+                android:layout_marginBottom="12dp" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvRecent"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:overScrollMode="never"
+                android:layout_marginBottom="8dp" />
+
+            <!-- Secciones principales -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Tu mundo musical"
+                android:textColor="@color/den_text"
+                android:textSize="17sp"
+                android:textStyle="bold"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="12dp" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvHub"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:overScrollMode="never"
+                android:nestedScrollingEnabled="false" />
+
+            <View android:layout_width="1dp" android:layout_height="16dp" />
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- Mini reproductor flotante -->
     <LinearLayout
         android:id="@+id/miniPlayer"
         android:layout_width="match_parent"
         android:layout_height="64dp"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:background="#1A1A26"
+        android:background="@color/den_surface_2"
         android:paddingHorizontal="12dp"
         android:visibility="gone">
 
@@ -58,7 +118,7 @@
                 android:id="@+id/tvMiniTitle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textColor="#FFFFFF"
+                android:textColor="@color/den_text"
                 android:textSize="13sp"
                 android:textStyle="bold"
                 android:maxLines="1"
@@ -68,7 +128,7 @@
                 android:id="@+id/tvMiniArtist"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textColor="#8888AA"
+                android:textColor="@color/den_text_dim"
                 android:textSize="11sp"
                 android:maxLines="1"
                 android:ellipsize="end" />
@@ -80,5 +140,21 @@
             android:layout_height="44dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:src="@android:drawable/ic_media_play" />
+    </LinearLayout>
+
+    <!-- Barra de navegación inferior -->
+    <LinearLayout
+        android:id="@+id/bottomNav"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:orientation="horizontal"
+        android:background="@color/den_surface_1"
+        android:gravity="center">
+
+        <TextView android:id="@+id/tabHome" android:text="⌂&#10;Inicio" style="@style/BottomTab" />
+        <TextView android:id="@+id/tabSearch" android:text="🔎&#10;Buscar" style="@style/BottomTab" />
+        <TextView android:id="@+id/tabLibrary" android:text="📚&#10;Biblioteca" style="@style/BottomTab" />
+        <TextView android:id="@+id/tabPlaylists" android:text="🎵&#10;Playlists" style="@style/BottomTab" />
+        <TextView android:id="@+id/tabYouTube" android:text="▶&#10;YouTube" style="@style/BottomTab" />
     </LinearLayout>
 </LinearLayout>
