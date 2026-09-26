@@ -207,8 +207,15 @@ class LocalMusicActivity : AppCompatActivity() {
 
     private fun loadSongs() {
         showEmpty("Escaneando música local…")
+        // Animación de pulso mientras carga (shimmer sutil)
+        findViewById<TextView>(R.id.tvEmptyMusic).animate()
+            .alpha(0.4f).setDuration(600).withEndAction {
+                findViewById<TextView>(R.id.tvEmptyMusic).animate().alpha(1f).setDuration(600).start()
+            }.start()
         lifecycleScope.launch {
             allSongs = provider.scanAll()
+            findViewById<TextView>(R.id.tvEmptyMusic).animate().cancel()
+            findViewById<TextView>(R.id.tvEmptyMusic).alpha = 1f
             if (allSongs.isEmpty()) showEmpty("No se encontró música en el teléfono.")
             else showSongs(allSongs)
         }

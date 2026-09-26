@@ -49,13 +49,14 @@
     <EditText
         android:id="@+id/etSearchMusic"
         android:layout_width="match_parent"
-        android:layout_height="48dp"
+        android:layout_height="50dp"
         android:hint="Buscar en tu biblioteca local…"
-        android:textColorHint="#666688"
-        android:textColor="#FFFFFF"
+        android:textColorHint="#5F5F74"
+        android:textColor="#FAFAFF"
         android:textSize="15sp"
-        android:paddingHorizontal="16dp"
-        android:background="@drawable/search_bg"
+        android:paddingHorizontal="18dp"
+        android:background="@drawable/den_searchbar"
+        android:layout_marginTop="10dp"
         android:inputType="text" />
 
     <androidx.recyclerview.widget.RecyclerView
@@ -63,7 +64,9 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:layout_marginTop="12dp" />
+        android:layout_marginTop="14dp"
+        android:overScrollMode="never"
+        android:layoutAnimation="@anim/layout_fade_slide" />
 
     <TextView
         android:id="@+id/tvEmptyMusic"

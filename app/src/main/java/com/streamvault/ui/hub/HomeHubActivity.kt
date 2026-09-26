@@ -204,7 +204,14 @@ class HomeHubActivity : AppCompatActivity() {
 
     private fun setupMiniPlayer() {
         findViewById<View>(R.id.miniPlayer).setOnClickListener {
-            startActivity(Intent(this, PlayerMusicActivity::class.java))
+            // Transición profesional: el reproductor se expande desde el mini player
+            val intent = Intent(this, PlayerMusicActivity::class.java)
+            val opts = if (!getSharedPreferences("app_settings", MODE_PRIVATE)
+                    .getBoolean("reduce_animations", false)
+            ) android.app.ActivityOptions.makeCustomAnimation(
+                this, R.anim.slide_up, R.anim.fade_in_fast
+            ).toBundle() else null
+            startActivity(intent, opts)
         }
         findViewById<ImageButton>(R.id.btnMiniPlay).setOnClickListener {
             controller?.let { if (it.isPlaying) it.pause() else it.play() }
