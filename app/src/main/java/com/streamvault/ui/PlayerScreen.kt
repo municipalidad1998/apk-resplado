@@ -141,7 +141,12 @@ fun FullPlayer(vm: LibraryViewModel, track: Track, state: PlaybackState, dismiss
                             LaunchedEffect(track.uri) { format.value = if (track.source == "online") null else vm.formatOf(track) }
                             format.value?.let { info -> Text(if (track.source == "online") info.badge else "${info.badge}${if (info.bitrateKbps > 0) " · ${info.bitrateKbps} kbps" else ""}", color = MaterialTheme.colorScheme.primary, fontSize = 11.sp, modifier = Modifier.testTag("format-badge")) }
                             if (track.source == "online") Text("Online · Internet Archive", color = MaterialTheme.colorScheme.primary, fontSize = 11.sp)
-                            if (settings.normalize) Text("Volumen parejo · ${LoudnessMath.label(LoudnessMath.gainDb(settings.targetLoudnessDb.toFloat(), track.loudnessDb), track.loudnessDb != null)}", color = MaterialTheme.colorScheme.primary, fontSize = 11.sp)
+                            if (settings.normalize) {
+                                val gain = LoudnessMath.gainDb(settings.targetLoudnessDb.toFloat(), track.loudnessDb, track.peakDb)
+                                Text("Original ${LoudnessMath.lufsLabel(track.loudnessDb)} → ${settings.targetLoudnessDb} LUFS · ${LoudnessMath.label(gain, track.loudnessDb != null)}",
+                                    color = MaterialTheme.colorScheme.primary, fontSize = 11.sp, modifier = Modifier.testTag("loudness-readout"))
+                                Text("Pico real ${LoudnessMath.peakLabel(track.peakDb)} · tope ${LoudnessMath.TRUE_PEAK_CEILING_DBTP} dBTP", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
                     }
                     if (landscape) Row(verticalAlignment = Alignment.CenterVertically) {

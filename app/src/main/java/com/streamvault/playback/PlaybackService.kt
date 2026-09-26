@@ -264,8 +264,10 @@ class PlaybackService : MediaSessionService() {
     private fun gainOf(item: MediaItem): Float {
         val settings = app.preferences.state.value
         if (!settings.normalize) return 0f
-        val measured = cues[item.mediaId]?.loudnessDb ?: item.loudnessDb
-        return LoudnessMath.gainDb(settings.targetLoudnessDb.toFloat(), measured)
+        val cue = cues[item.mediaId]
+        val measured = cue?.loudnessDb ?: item.loudnessDb
+        val peak = cue?.peakDb ?: item.peakDb
+        return LoudnessMath.gainDb(settings.targetLoudnessDb.toFloat(), measured, peak)
     }
     private fun volumeOf(item: MediaItem): Float = LoudnessMath.attenuation(gainOf(item))
     private fun boostOf(item: MediaItem): Int = LoudnessMath.boostMillibels(gainOf(item))

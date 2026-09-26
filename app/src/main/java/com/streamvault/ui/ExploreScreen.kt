@@ -20,13 +20,16 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.streamvault.data.Track
 import com.streamvault.online.OnlineResult
 import com.streamvault.online.Quality
 
 /** Online search. Same player, queue and playlists as the local files; only the source changes. */
 @Composable
-fun ExploreScreen(vm: LibraryViewModel) {
+fun ExploreScreen(vm: LibraryViewModel, menu: (Track) -> Unit) {
     val results by vm.onlineResults.collectAsStateWithLifecycle()
+    val local by vm.localResults.collectAsStateWithLifecycle()
+    val current by vm.current.collectAsStateWithLifecycle()
     val searching by vm.onlineSearching.collectAsStateWithLifecycle()
     val error by vm.onlineError.collectAsStateWithLifecycle()
     val net by vm.net.collectAsStateWithLifecycle()
@@ -43,7 +46,7 @@ fun ExploreScreen(vm: LibraryViewModel) {
             singleLine = true,
             placeholder = { Text("Canción, artista, álbum, concierto…") },
             leadingIcon = { Icon(Icons.Rounded.Search, null) },
-            trailingIcon = { if (query.isNotEmpty()) ActionIcon(Icons.Rounded.Close, "Borrar", { query = ""; vm.onlineResults.value = emptyList() }) },
+            trailingIcon = { if (query.isNotEmpty()) ActionIcon(Icons.Rounded.Close, "Borrar", { query = ""; vm.onlineResults.value = emptyList(); vm.localResults.value = emptyList() }) },
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(onSearch = { vm.searchOnline(query) }),
             shape = RoundedCornerShape(16.dp)
@@ -78,7 +81,19 @@ fun ExploreScreen(vm: LibraryViewModel) {
         if (searching) LinearProgressIndicator(Modifier.fillMaxWidth())
         error?.let { Text(it, fontSize = 12.sp, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(vertical = 8.dp)) }
 
-        if (results.isEmpty() && !searching) {
+        if (local.isNotEmpty()) {
+            Text("En tu teléfono", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 6.dp, bottom = 2.dp))
+            Text("Resultados exactos primero: artista y título coincidentes antes que parecidos.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 12.dp)) {
+                items(local.take(20), key = { "local-${it.id}" }) { track ->
+                    TrackRow(track, current?.id == track.id, { vm.play(track, local.take(30)) }, { menu(track) })
+                }
+            }
+        }
+        if (results.isNotEmpty()) {
+            Text(if (local.isEmpty()) "En Internet" else "También en Internet", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 6.dp, bottom = 2.dp))
+        }
+        if (results.isEmpty() && local.isEmpty() && !searching) {
             LazyColumn(Modifier.weight(1f)) {
                 item {
                     Text("Prueba con", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp, bottom = 8.dp))
@@ -94,9 +109,9 @@ fun ExploreScreen(vm: LibraryViewModel) {
                         fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 18.sp)
                 }
             }
-        } else {
+        } else if (results.isNotEmpty()) {
             LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 20.dp)) {
-                items(results, key = { it.id }) { result -> OnlineRow(vm, result) }
+                items(results, key = { "online-${it.id}" }) { result -> OnlineRow(vm, result) }
             }
         }
     }

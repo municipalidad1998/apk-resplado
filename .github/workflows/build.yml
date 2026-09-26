@@ -155,18 +155,18 @@ jobs:
       - name: Name the installable APK
         run: |
           mkdir -p release
-          cp apks/app/app-debug.apk release/reproductor-denilson-2.5.0.apk
+          cp apks/app/app-debug.apk release/reproductor-denilson-2.6.0.apk
           ls -l release
       - uses: softprops/action-gh-release@v2
         with:
-          tag_name: v2.5.0
-          name: Reproductor de música Denilson 2.5.0
+          tag_name: v2.6.0
+          name: Reproductor de música Denilson 2.6.0
           body: |
             APK generado y verificado por este flujo (pruebas JVM, Lint y pruebas
             instrumentadas en Android 15). Mantiene la misma firma que la versión anterior,
             así que se actualiza sin desinstalar y sin perder la biblioteca.
 
-            Instalación: descarga `reproductor-denilson-2.5.0.apk` y ábrelo en el teléfono.
+            Instalación: descarga `reproductor-denilson-2.6.0.apk` y ábrelo en el teléfono.
             La primera vez, Android pedirá autorizar "Instalar apps desconocidas" para el
             navegador o el gestor de archivos que uses. Después de instalar, la app misma
             puede buscar e instalar las siguientes versiones desde Ajustes → Actualizaciones.
@@ -184,5 +184,5 @@ jobs:
 
             YouTube: el botón abre la búsqueda en la app oficial de YouTube. La app no bloquea
             anuncios ni reproduce YouTube en segundo plano; eso depende de YouTube Premium.
-          files: release/reproductor-denilson-2.5.0.apk
+          files: release/reproductor-denilson-2.6.0.apk
           fail_on_unmatched_files: true

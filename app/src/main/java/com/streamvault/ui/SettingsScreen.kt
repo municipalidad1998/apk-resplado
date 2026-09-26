@@ -23,6 +23,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import com.streamvault.analysis.AnalysisWorker
 import com.streamvault.online.Quality
+import com.streamvault.playback.LoudnessMath
 import com.streamvault.playback.CompressorPreset
 import com.streamvault.playback.PlaybackEvents
 import com.streamvault.scanner.ScanWorker
@@ -84,7 +85,10 @@ fun SettingsScreen(vm: LibraryViewModel, permission: () -> Unit, folder: () -> U
             SectionTitle("Audio")
             Setting("Calidad original", "Sin transcodificación. La compatibilidad depende del decodificador de Android.")
             Toggle("Volumen parejo", "Nivela tus canciones para que ninguna suene más bajo que las demás", settings.normalize) { value -> update { it.copy(normalize = value) } }
-            Setting("Nivel objetivo", if (settings.normalize) "${settings.targetLoudnessDb} dBFS RMS · ${if (settings.targetLoudnessDb >= -14) "más fuerte" else if (settings.targetLoudnessDb <= -20) "más suave" else "equilibrado"}" else "Desactivado", { choose = "Nivel objetivo" })
+            Setting("Loudness objetivo", if (settings.normalize) "${settings.targetLoudnessDb} LUFS · ${if (settings.targetLoudnessDb >= -12) "más fuerte" else if (settings.targetLoudnessDb <= -18) "más suave" else "equilibrado"}" else "Desactivado", { choose = "Loudness objetivo" })
+            Text("Se mide el loudness real de cada canción (BS.1770, con curva K y doble compuerta) y la ganancia se aplica al reproducir, sin tocar el archivo. "
+                + "Si el pico verdadero no deja subir todo lo necesario, la ganancia se limita a ${LoudnessMath.TRUE_PEAK_CEILING_DBTP} dBTP para no distorsionar.",
+                fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 6.dp))
             Setting("Medir el volumen de tu biblioteca", "Analiza el volumen real de cada canción en segundo plano", { AnalysisWorker.enqueue(context); vm.notify("Midiendo el volumen de la biblioteca en segundo plano") })
             Setting("Compresor", CompressorPreset.from(settings.compressor).label + if (settings.compressor == "off") "" else " · ${CompressorPreset.from(settings.compressor).description}", { choose = "Compresor" })
             Text("El compresor baja lo muy fuerte y sube lo muy suave dentro de la misma canción, como el efecto Compresor de Audacity, y un limitador a −1 dB evita que se distorsione al subir el volumen. "
@@ -103,6 +107,8 @@ fun SettingsScreen(vm: LibraryViewModel, permission: () -> Unit, folder: () -> U
                 } catch (_: Exception) { vm.notify("Este dispositivo no ofrece un ecualizador compatible") }
             })
             UpdateSection(vm)
+            SectionTitle("Telegram")
+            TelegramSection(vm)
             SectionTitle("Datos y calidad")
             Toggle("Usar datos móviles", "Reproducir música online con la red del operador", settings.mobileData) { value -> update { it.copy(mobileData = value) } }
             Toggle("Solo Wi‑Fi", "No consumir datos móviles en ninguna calidad", settings.wifiOnly) { value -> update { it.copy(wifiOnly = value) } }
@@ -127,7 +133,7 @@ fun SettingsScreen(vm: LibraryViewModel, permission: () -> Unit, folder: () -> U
             "Repetición" -> listOf("0" to "Desactivada", "1" to "Una canción", "2" to "Toda la cola")
             "Sensibilidad" -> listOf("-60" to "Alta · −60 dBFS", "-45" to "Equilibrada · −45 dBFS", "-30" to "Baja · −30 dBFS")
             "Silencio mínimo" -> listOf(0, 1, 2, 3, 5).map { it.toString() to "$it segundos" }
-            "Nivel objetivo" -> listOf(-22, -20, -18, -16, -14, -12).map { it.toString() to "$it dBFS RMS" }
+            "Loudness objetivo" -> listOf(-20, -18, -16, -14, -12).map { it.toString() to "$it LUFS" }
             "Compresor" -> CompressorPreset.ALL.map { it.key to it.label }
             "Calidad online" -> Quality.values().map { it.key to it.label }
             else -> listOf("system" to "Automático según el sistema", "dark" to "Oscuro", "light" to "Claro")
@@ -138,7 +144,7 @@ fun SettingsScreen(vm: LibraryViewModel, permission: () -> Unit, folder: () -> U
                 update { old -> when (choose) {
                     "Crossfade" -> old.copy(crossfade = key.toInt()); "Saltar ± segundos" -> old.copy(skipSeconds = key.toInt())
                     "Repetición" -> old.copy(repeat = key.toInt()); "Sensibilidad" -> old.copy(thresholdDb = key.toInt())
-                    "Silencio mínimo" -> old.copy(minimumSilence = key.toInt()); "Nivel objetivo" -> old.copy(targetLoudnessDb = key.toInt())
+                    "Silencio mínimo" -> old.copy(minimumSilence = key.toInt()); "Loudness objetivo" -> old.copy(targetLoudnessDb = key.toInt())
                     "Compresor" -> old.copy(compressor = key); "Calidad online" -> old.copy(onlineQuality = key); else -> old.copy(theme = key)
                 } }
                 if (reanalyze && vm.settings.value.detectSilence) AnalysisWorker.enqueue(context)
@@ -159,4 +165,18 @@ fun Setting(title: String, subtitle: String, click: (() -> Unit)? = null) {
 @Composable
 fun Toggle(title: String, subtitle: String, checked: Boolean, change: (Boolean) -> Unit) {
     ListItem(headlineContent = { Text(title) }, supportingContent = { Text(subtitle, fontSize = 12.sp) }, trailingContent = { Switch(checked, change) }, modifier = Modifier.clickable { change(!checked) })
+}
+
+@Composable
+private fun TelegramSection(vm: LibraryViewModel) {
+    val count by vm.telegram.count.collectAsStateWithLifecycle(0)
+    val open = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> if (uri != null) vm.importTelegram(uri) }
+    Setting("Importar música de Telegram", "Lee el respaldo exportado por Telegram y guarda sus metadatos", { open.launch(arrayOf("application/json", "text/*")) })
+    Text(if (count == 0) "Aún no hay música de Telegram registrada."
+        else "$count canciones registradas con su id de mensaje, nombre, artista, duración y tamaño. "
+            + "Las que siguen en el teléfono se reproducen igual que el resto de tu biblioteca; el resto conserva sus datos para cuando vuelvas a tener el archivo.",
+        fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 6.dp))
+    Text("Reproducir directamente desde los servidores de Telegram necesita un cliente MTProto con tus propias credenciales de API. "
+        + "Mientras tanto, la importación mantiene la canción en tu biblioteca con todos sus datos.",
+        fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 6.dp))
 }

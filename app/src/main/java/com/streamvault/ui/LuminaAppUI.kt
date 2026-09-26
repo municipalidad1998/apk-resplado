@@ -60,7 +60,7 @@ fun LuminaAppUI(vm: LibraryViewModel, requestPermission: () -> Unit, chooseFolde
                             Crossfade(targetState = page, animationSpec = tween(if (settings.animations) 220 else 0), label = "Pantalla") { destination ->
                             when (destination) {
                                 0 -> HomeScreen(vm, requestPermission, chooseFolder, ::library, { page = 3 }, { page = 1 }, { menuTrack = it })
-                                1 -> ExploreScreen(vm)
+                                1 -> ExploreScreen(vm, { menuTrack = it })
                                 2 -> LibraryScreen(vm, false, requestPermission, chooseFolder, { menuTrack = it })
                                 3 -> PlaylistsScreen(vm, { menuTrack = it }, { library() })
                                 else -> SettingsScreen(vm, requestPermission, chooseFolder)

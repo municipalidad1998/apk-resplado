@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.streamvault.data.Track
+import com.streamvault.playback.LoudnessMath
 import com.streamvault.processing.Availability
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -44,6 +45,7 @@ fun TrackActions(vm: LibraryViewModel, initialTrack: Track, dismiss: () -> Unit)
     val playlists by vm.playlists.collectAsStateWithLifecycle()
     val busy by vm.busy.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val settings by vm.settings.collectAsStateWithLifecycle()
     var action by remember { mutableStateOf("menu") }
     val image = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> if (uri != null) vm.cover(track, uri); dismiss() }
     fun runAndClose(block: () -> Unit) { block(); dismiss() }
@@ -95,7 +97,8 @@ fun TrackActions(vm: LibraryViewModel, initialTrack: Track, dismiss: () -> Unit)
         }
     }
     when (action) {
-        "edit" -> EditTrack(track, dismiss) { name, title, artist, album, genre, notes, tags -> vm.edit(track, name, title, artist, album, genre, notes, tags); dismiss() }
+        "edit" -> EditTrack(track, dismiss) { name, title, artist, album, genre, notes, tags, year, number, disc ->
+            vm.edit(track, name, title, artist, album, genre, notes, tags, year, number, disc); dismiss() }
         "playlist" -> AlertDialog(onDismissRequest = dismiss, title = { Text("Agregar a playlist") }, text = {
             LazyColumn {
                 if (playlists.isEmpty()) item { Text("Crea tu primera playlist con el botón de abajo.") }
@@ -119,6 +122,9 @@ fun TrackActions(vm: LibraryViewModel, initialTrack: Track, dismiss: () -> Unit)
                 Info("FECHA", if (track.date > 0) DateFormat.getDateTimeInstance().format(Date(track.date)) else "No disponible")
                 Info("UBICACIÓN", track.folder); Info("URI", track.uri)
                 Info("ÁLBUM · GÉNERO", "${track.album} · ${track.genre}")
+                Info("PISTA · DISCO", "${if (track.trackNumber > 0) track.trackNumber.toString() else "—"} · ${if (track.discNumber > 0) track.discNumber.toString() else "—"}")
+                Info("LOUDNESS MEDIDO", "${LoudnessMath.lufsLabel(track.loudnessDb)} · pico ${LoudnessMath.peakLabel(track.peakDb)}")
+                Info("GANANCIA APLICADA", LoudnessMath.label(LoudnessMath.gainDb(settings.targetLoudnessDb.toFloat(), track.loudnessDb, track.peakDb), track.loudnessDb != null))
                 Info("REPRODUCCIONES", track.plays.toString()); Info("NOTAS", track.notes.ifBlank { "Sin notas" }); Info("ETIQUETAS", track.tags.ifBlank { "Sin etiquetas" })
                 Info("IDENTIDAD SHA-256", track.id)
             }
@@ -133,10 +139,13 @@ fun TrackActions(vm: LibraryViewModel, initialTrack: Track, dismiss: () -> Unit)
 private fun Info(label: String, value: String) { Column { Text(label, fontSize = 10.sp, color = MaterialTheme.colorScheme.primary); Spacer(Modifier.height(4.dp)); Text(value, fontSize = 13.sp) } }
 
 @Composable
-private fun EditTrack(track: Track, dismiss: () -> Unit, save: (String, String, String, String, String, String, String) -> Unit) {
+private fun EditTrack(track: Track, dismiss: () -> Unit, save: (String, String, String, String, String, String, String, Long, Int, Int) -> Unit) {
     var name by remember { mutableStateOf(track.customName) }; var title by remember { mutableStateOf(track.title) }
     var artist by remember { mutableStateOf(track.artist) }; var album by remember { mutableStateOf(track.album) }
     var genre by remember { mutableStateOf(track.genre) }; var notes by remember { mutableStateOf(track.notes) }; var tags by remember { mutableStateOf(track.tags) }
+    var year by remember { mutableStateOf(if (track.date > 0) java.util.Calendar.getInstance().apply { timeInMillis = track.date }.get(java.util.Calendar.YEAR).toString() else "") }
+    var number by remember { mutableStateOf(if (track.trackNumber > 0) track.trackNumber.toString() else "") }
+    var disc by remember { mutableStateOf(if (track.discNumber > 0) track.discNumber.toString() else "") }
     AlertDialog(onDismissRequest = dismiss, title = { Text("Hazlo tuyo") }, text = {
         Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("Solo se cambia la información en la app. El archivo original permanece intacto.", style = MaterialTheme.typography.bodySmall)
@@ -145,10 +154,18 @@ private fun EditTrack(track: Track, dismiss: () -> Unit, save: (String, String, 
             OutlinedTextField(artist, { artist = it }, label = { Text("Artista") })
             OutlinedTextField(album, { album = it }, label = { Text("Álbum") })
             OutlinedTextField(genre, { genre = it }, label = { Text("Género") })
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(number, { number = it }, label = { Text("N° de pista") }, modifier = Modifier.weight(1f), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true)
+                OutlinedTextField(disc, { disc = it }, label = { Text("Disco") }, modifier = Modifier.weight(1f), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true)
+                OutlinedTextField(year, { year = it }, label = { Text("Año") }, modifier = Modifier.weight(1f), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true)
+            }
             OutlinedTextField(tags, { tags = it }, label = { Text("Etiquetas") })
             OutlinedTextField(notes, { notes = it }, label = { Text("Descripción / notas") })
         }
-    }, confirmButton = { TextButton(onClick = { save(name, title, artist, album, genre, notes, tags) }) { Text("Guardar") } }, dismissButton = { TextButton(onClick = dismiss) { Text("Cancelar") } })
+    }, confirmButton = { TextButton(onClick = {
+        val parsedYear = year.toIntOrNull()?.let { java.util.Calendar.getInstance().apply { clear(); set(java.util.Calendar.YEAR, it) }.timeInMillis } ?: -1L
+        save(name, title, artist, album, genre, notes, tags, parsedYear, number.toIntOrNull() ?: 0, disc.toIntOrNull() ?: 0)
+    }) { Text("Guardar") } }, dismissButton = { TextButton(onClick = dismiss) { Text("Cancelar") } }))
 }
 
 @Composable

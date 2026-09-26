@@ -17,13 +17,15 @@ import kotlin.math.sqrt
 /**
  * Measures how loud a file actually is by decoding real PCM, the same way the silence detector does.
  *
- * The result is the RMS level in dBFS of a window of the track. It is an estimate, not a broadcast
- * LUFS measurement: it ignores the K-weighting curve and only reads a window, so a track that is
- * quiet at the start and loud at the end is measured from the region it actually samples.
+ * The result is the gated BS.1770 loudness (LUFS) of a window of the track, measured with the
+ * K-weighting curve and with an estimate of the true peak, so the gain applied at playback can be
+ * limited before it distorts. The window keeps the analysis fast, so a track that is quiet at the
+ * start and loud at the end is measured from the region it actually samples.
  */
 class LoudnessAnalyzer(private val context: Context) {
 
-    data class Result(val rmsDb: Float, val peakDb: Float, val seconds: Float)
+    /** [lufs] is the gated BS.1770 loudness and [peakDb] the estimated true peak in dBTP. */
+    data class Result(val lufs: Float, val peakDb: Float, val seconds: Float)
 
     suspend fun measure(uri: String, startMs: Long = 0, windowSeconds: Int = DEFAULT_WINDOW_SECONDS): Result = withContext(Dispatchers.IO) {
         val extractor = MediaExtractor()
@@ -46,9 +48,7 @@ class LoudnessAnalyzer(private val context: Context) {
             val info = MediaCodec.BufferInfo()
             var inputEnded = false
             var finished = false
-            var sum = 0.0
-            var samples = 0L
-            var peak = 0f
+            var meter: LoudnessMeter? = null
             var firstUs = -1L
             var lastUs = 0L
             var lastOutput = System.nanoTime()
@@ -77,6 +77,8 @@ class LoudnessAnalyzer(private val context: Context) {
                         channels = output.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
                         encoding = if (output.containsKey(MediaFormat.KEY_PCM_ENCODING)) output.getInteger(MediaFormat.KEY_PCM_ENCODING) else AudioFormat.ENCODING_PCM_16BIT
                         check(encoding == AudioFormat.ENCODING_PCM_16BIT || encoding == AudioFormat.ENCODING_PCM_FLOAT) { "Formato PCM no compatible" }
+                        // A new rate or layout needs a new meter: the K-weighting depends on the rate.
+                        meter = LoudnessMeter(rate, channels)
                     }
                     else -> if (index >= 0) {
                         lastOutput = System.nanoTime()
@@ -87,13 +89,13 @@ class LoudnessAnalyzer(private val context: Context) {
                             if (firstUs < 0) firstUs = info.presentationTimeUs
                             lastUs = info.presentationTimeUs
                             val bytesPerSample = if (encoding == AudioFormat.ENCODING_PCM_FLOAT) 4 else 2
+                            val active = meter ?: LoudnessMeter(rate, channels).also { meter = it }
+                            val chunk = FloatArray(buffer.remaining() / bytesPerSample)
+                            var index = 0
                             while (buffer.remaining() >= bytesPerSample) {
-                                val value = if (bytesPerSample == 4) buffer.float.coerceIn(-1f, 1f) else buffer.short / 32768f
-                                sum += value * value
-                                samples++
-                                val magnitude = if (value < 0) -value else value
-                                if (magnitude > peak) peak = magnitude
+                                chunk[index++] = if (bytesPerSample == 4) buffer.float.coerceIn(-1f, 1f) else buffer.short / 32768f
                             }
+                            active.feed(if (index == chunk.size) chunk else chunk.copyOfRange(0, index))
                             if (info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) finished = true
                             else if (lastUs - firstUs >= limitUs) finished = true
                         } finally {
@@ -102,9 +104,9 @@ class LoudnessAnalyzer(private val context: Context) {
                     }
                 }
             }
-            if (samples == 0L) error("No se pudo decodificar audio para medir el volumen")
-            val rms = sqrt(sum / samples).toFloat()
-            Result(rmsDb = toDb(rms), peakDb = toDb(peak), seconds = (lastUs - firstUs) / 1_000_000f)
+            val measurement = meter?.result() ?: error("No se pudo decodificar audio para medir el volumen")
+            if (measurement.seconds <= 0.2f) error("No se pudo decodificar audio para medir el volumen")
+            Result(lufs = measurement.lufs, peakDb = measurement.truePeakDbTp, seconds = measurement.seconds)
         } finally {
             decoder?.let { runCatching { it.stop() }; it.release() }
             extractor.release()
@@ -112,6 +114,7 @@ class LoudnessAnalyzer(private val context: Context) {
     }
 
     private fun toDb(value: Float): Float = if (value <= 0f) SILENCE_DB else (20f * log10(value)).coerceIn(SILENCE_DB, 0f)
+
 
     companion object {
         const val DEFAULT_WINDOW_SECONDS = 90

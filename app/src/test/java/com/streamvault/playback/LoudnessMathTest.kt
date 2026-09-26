@@ -6,6 +6,25 @@ import org.junit.Test
 
 class LoudnessMathTest {
 
+    @Test fun theGainIsLimitedByTheTruePeak() {
+        // A song at -20 LUFS wants +6 dB, but a peak of -3 dBTP only leaves 2 dB before the ceiling.
+        val gain = LoudnessMath.gainDb(-14f, -20f, -3f)
+        assertEquals(2f, gain, 0.01f)
+        // With headroom, the full correction is applied.
+        assertEquals(6f, LoudnessMath.gainDb(-14f, -20f, -10f), 0.01f)
+        assertEquals(6f, LoudnessMath.gainDb(-14f, -20f, null), 0.01f)
+    }
+
+    @Test fun loudSongsAreAttenuatedEvenWithHeadroom() {
+        assertEquals(-6f, LoudnessMath.gainDb(-14f, -8f, -10f), 0.01f)
+    }
+
+    @Test fun labelsDescribeLuAndTruePeak() {
+        assertEquals("-20.0 LUFS", LoudnessMath.lufsLabel(-20f))
+        assertEquals("sin medir", LoudnessMath.lufsLabel(null))
+        assertEquals("-0.5 dBTP", LoudnessMath.peakLabel(-0.5f))
+    }
+
     @Test fun boostsQuietSongsAndAttenuatesLoudOnes() {
         // A quiet track at -30 dBFS played against a -16 dBFS target needs +14 dB.
         assertEquals(14f, LoudnessMath.gainDb(-16f, -30f), 0.01f)

@@ -13,6 +13,7 @@ import androidx.media3.session.SessionToken
 import androidx.paging.*
 import androidx.work.WorkManager
 import com.streamvault.BuildConfig
+import com.streamvault.data.Track
 import com.streamvault.LuminaApp
 import com.streamvault.analysis.LoudnessAnalyzer
 import com.streamvault.analysis.SilenceAnalyzer
@@ -20,6 +21,8 @@ import com.streamvault.data.*
 import com.streamvault.playback.*
 import com.streamvault.scanner.ScanWorker
 import com.streamvault.flac.AudioFormatReader
+import com.streamvault.search.SmartSearch
+import com.streamvault.telegram.TelegramRepository
 import com.streamvault.network.ConnectivityMonitor
 import com.streamvault.network.NetState
 import com.streamvault.online.OnlineRepository
@@ -31,6 +34,7 @@ import com.streamvault.update.UpdateInstaller
 import com.streamvault.update.UpdateManager
 import com.streamvault.update.UpdateParser
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.*
 import java.util.UUID
 
@@ -66,8 +70,11 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
     val updates = UpdateManager(application)
     val online = OnlineRepository(app)
     private val connectivity = ConnectivityMonitor(app)
+    val telegram = TelegramRepository(app)
     val net: StateFlow<NetState> get() = connectivity.state
     val onlineResults = MutableStateFlow<List<OnlineResult>>(emptyList())
+    val localResults = MutableStateFlow<List<Track>>(emptyList())
+    val ranked = MutableStateFlow<List<Track>>(emptyList())
     val onlineSearching = MutableStateFlow(false)
     val onlineError = MutableStateFlow<String?>(null)
     val roots = MutableStateFlow(app.preferences.roots().toList())
@@ -89,6 +96,9 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
     }
     init {
         connectivity.start()
+        viewModelScope.launch {
+            query.debounce(220).collect { text -> ranked.value = runCatching { searchLocal(text) }.getOrDefault(emptyList()) }
+        }
         UpdateInstaller.register(app)
         viewModelScope.launch {
             UpdateInstaller.status.collect { status ->
@@ -131,10 +141,12 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
         c.setMediaItems(list.map { it.mediaItem(settings.value, original && it.id == track.id) }, index, if (original) 0 else track.offset(settings.value.detectSilence))
         c.prepare(); c.play()
     }
-    fun playLibrary(track: Track) {
+    fun playLibrary(track: Track, context: List<Track>? = null) {
+        if (context != null) { play(track, context); return }
         queueLoad?.cancel()
         val q = searchPattern(query.value)
         val f = filter.value
+
         queueLoad = viewModelScope.launch {
             try {
                 val queue = dao.playbackQueue(q, f.source, f.favorite, f.folder, f.artist, f.album, f.genre, f.sort)
@@ -171,27 +183,69 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
         controller?.let { c -> (c.mediaItemCount - 1 downTo 0).filter { c.getMediaItemAt(it).mediaId == track.id }.forEach(c::removeMediaItem) }
         notify("Eliminada de la biblioteca. El archivo original sigue intacto.")
     }
-    fun edit(track: Track, name: String, title: String, artist: String, album: String, genre: String, notes: String, tags: String) = task {
+    fun edit(track: Track, name: String, title: String, artist: String, album: String, genre: String, notes: String, tags: String,
+             year: Long = -1, trackNumber: Int = -1, discNumber: Int = -1) = task {
         val latest = dao.track(track.id) ?: return@task
         dao.update(latest.copy(customName = name.trim(), title = title.ifBlank { latest.title }, artist = artist.ifBlank { "Artista desconocido" },
-            album = album.ifBlank { "Sin álbum" }, genre = genre.ifBlank { "Sin género" }, notes = notes, tags = tags))
+            album = album.ifBlank { "Sin álbum" }, genre = genre.ifBlank { "Sin género" }, notes = notes, tags = tags,
+            date = if (year >= 0) year else latest.date,
+            trackNumber = if (trackNumber >= 0) trackNumber else latest.trackNumber,
+            discNumber = if (discNumber >= 0) discNumber else latest.discNumber))
         notify("Información guardada sin modificar el archivo")
     }
+    /** Ranked search: an exact artist + title always beats a partial coincidence. */
+    suspend fun searchLocal(query: String): List<Track> {
+        val clean = query.trim()
+        if (clean.length < 2) return emptyList()
+        val tokens = SmartSearch.normalize(clean).split(' ').filter { it.length > 1 }.distinct().take(6)
+        if (tokens.isEmpty()) return emptyList()
+        val where = tokens.joinToString(" OR ") {
+            "(title LIKE ? ESCAPE '\\' OR customName LIKE ? ESCAPE '\\' OR artist LIKE ? ESCAPE '\\' OR album LIKE ? ESCAPE '\\' OR genre LIKE ? ESCAPE '\\' OR fileName LIKE ? ESCAPE '\\')"
+        }
+        val args = tokens.flatMap { token -> List(6) { "%${token.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")}%" } }
+        val sql = "SELECT * FROM tracks WHERE hidden = 0 AND available = 1 AND ($where) LIMIT 600"
+        val rows = withContext(Dispatchers.IO) {
+            dao.candidates(androidx.sqlite.db.SimpleSQLiteQuery(sql, args.toTypedArray()))
+        }
+        return SmartSearch.rankItems(rows, clean) { track ->
+            SmartSearch.Candidate(track.id, track.displayName, track.artist, track.album, track.source, track.plays, track.durationMs)
+        }
+    }
+
+    /** Ranks what the provider returned with the same rules used for the local library. */
+    fun rankOnline(results: List<com.streamvault.online.OnlineResult>, query: String): List<com.streamvault.online.OnlineResult> =
+        SmartSearch.rankItems(results, query) { result ->
+            SmartSearch.Candidate(result.id, result.title, result.artist, result.album, result.source, 0, (result.durationSeconds * 1000).toLong())
+        }
+
+    fun importTelegram(uri: Uri) = task {
+        val text = withContext(Dispatchers.IO) {
+            app.contentResolver.openInputStream(uri)?.bufferedReader()?.readText()
+        } ?: error("No se pudo leer el archivo exportado")
+        val summary = telegram.import(text)
+        if (summary.saved == 0) error("El archivo no es una exportación de Telegram o no contiene música.")
+        notify("${summary.saved} canciones de Telegram registradas · ${summary.linked} disponibles en el teléfono")
+    }
+
     fun cover(track: Track, uri: Uri) = task {
         val cover = withContext(Dispatchers.IO) { app.artwork.import(track.id, uri) } ?: error("La imagen no es compatible")
         dao.track(track.id)?.let { dao.update(it.copy(cover = cover)) }
     }
-    /** Online search and playback through the provider interface. */
+    /**
+     * The phone comes first, then the internet: the local library is searched and ranked
+     * immediately, and only afterwards the online provider is queried with the same rules.
+     */
     fun searchOnline(query: String) {
         val clean = query.trim()
         if (clean.length < 2) return
         viewModelScope.launch {
             onlineSearching.value = true
             onlineError.value = null
+            localResults.value = runCatching { searchLocal(clean) }.getOrDefault(emptyList())
             runCatching { online.search(clean) }
                 .onSuccess { results ->
-                    onlineResults.value = results
-                    if (results.isEmpty()) onlineError.value = "Sin resultados en el catálogo libre para \"$clean\". Prueba con el artista o con otra palabra."
+                    onlineResults.value = rankOnline(results, clean)
+                    if (results.isEmpty() && localResults.value.isEmpty()) onlineError.value = "Sin resultados para \"$clean\". Prueba con el artista o con otra palabra."
                 }
                 .onFailure { onlineError.value = it.localizedMessage ?: "No se pudo buscar en Internet" }
             onlineSearching.value = false

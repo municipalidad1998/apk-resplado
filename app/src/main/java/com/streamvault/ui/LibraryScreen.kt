@@ -19,6 +19,8 @@ import com.streamvault.data.Track
 @Composable
 fun LibraryScreen(vm: LibraryViewModel, search: Boolean, permission: () -> Unit, folder: () -> Unit, menu: (Track) -> Unit) {
     val songs = vm.tracks.collectAsLazyPagingItems()
+    val ranked by vm.ranked.collectAsStateWithLifecycle()
+    val searching = query.trim().length >= 2
     val query by vm.query.collectAsStateWithLifecycle()
     val filter by vm.filter.collectAsStateWithLifecycle()
     val count by vm.count.collectAsStateWithLifecycle()
@@ -57,7 +59,10 @@ fun LibraryScreen(vm: LibraryViewModel, search: Boolean, permission: () -> Unit,
         } else Spacer(Modifier.height(16.dp))
         val detail = listOf(filter.folder, filter.artist, filter.album, filter.genre).firstOrNull { it.isNotEmpty() }
         if (detail != null) InputChip(selected = true, onClick = { vm.filter.value = LibraryFilter() }, label = { Text(detail) }, trailingIcon = { Icon(Icons.Rounded.Close, "Quitar filtro") })
-        LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 20.dp)) {
+        if (searching) LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 20.dp)) {
+            if (ranked.isEmpty()) item { EmptyState("No encontramos esos sonidos", "Prueba otro título, artista, etiqueta o carpeta. La búsqueda prioriza las coincidencias exactas.", Icons.Rounded.SearchOff) }
+            items(ranked, key = { "ranked-${it.id}" }) { track -> TrackRow(track, current?.id == track.id, { vm.playLibrary(track, ranked) }, { menu(track) }) }
+        } else LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 20.dp)) {
             if (songs.itemCount == 0 && songs.loadState.refresh !is LoadState.Loading) item {
                 if (count == 0) {
                     EmptyState("Tu biblioteca empieza aquí", "Permite que el reproductor encuentre música, descargas y notas de voz. Para WhatsApp o una tarjeta SD puedes seleccionar una carpeta.", action = "Permitir acceso", onAction = permission)

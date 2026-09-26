@@ -35,7 +35,7 @@ class AnalysisRepository(private val app: LuminaApp) {
         if (!force && track.loudnessDb != null) return
         runCatching {
             val result = withTimeout(45_000) { LoudnessAnalyzer(app).measure(track.uri, offsetMs) }
-            if (result.rmsDb > LoudnessAnalyzer.SILENCE_DB) app.library.loudness(track.id, result.rmsDb)
+            if (result.lufs > LoudnessAnalyzer.SILENCE_DB) app.library.loudness(track.id, result.lufs, result.peakDb)
         }.onFailure { android.util.Log.w("Loudness", "No se pudo medir ${track.displayName}: ${it.message}") }
     }
 }

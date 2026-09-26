@@ -114,6 +114,8 @@ class AudioScanner(private val app: LuminaApp, private val progress: suspend (In
                         album = clean(metadata.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM), track.album),
                         genre = clean(metadata.extractMetadata(MediaMetadataRetriever.METADATA_KEY_GENRE), "Sin género"),
                         durationMs = metadata.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: duration,
+                        trackNumber = metadata.extractMetadata(MediaMetadataRetriever.METADATA_KEY_CD_TRACK_NUMBER)?.substringBefore('/')?.toIntOrNull() ?: 0,
+                        discNumber = metadata.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DISC_NUMBER)?.substringBefore('/')?.toIntOrNull() ?: 0,
                         cover = app.artwork.embedded(id, metadata.embeddedPicture) ?: localCover?.let { app.artwork.import(id, it) })
                 } catch (_: Exception) { /* Unsupported decoder: still index the original, never discard it. */ }
                 finally { metadata.release() }
