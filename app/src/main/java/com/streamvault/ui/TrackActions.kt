@@ -139,6 +139,8 @@ fun TrackActions(vm: LibraryViewModel, initialTrack: Track, dismiss: () -> Unit)
 private fun Info(label: String, value: String) { Column { Text(label, fontSize = 10.sp, color = MaterialTheme.colorScheme.primary); Spacer(Modifier.height(4.dp)); Text(value, fontSize = 13.sp) } }
 
 private fun yearToMillis(value: String): Long {
+    val year = value.toIntOrNull() ?: return -1L
+    return java.util.Calendar.getInstance().apply { clear(); set(java.util.Calendar.YEAR, year) }.timeInMillis
 }
 
 @Composable
