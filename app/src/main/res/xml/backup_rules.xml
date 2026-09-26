@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 11 and below: keep the library database and the settings so a reinstall restores them. -->
+<full-backup-content>
+    <include domain="database" path="lumina-library.db" />
+    <include domain="database" path="lumina-library.db-wal" />
+    <include domain="database" path="lumina-library.db-shm" />
+    <include domain="sharedpref" path="lumina.xml" />
+    <include domain="file" path="covers/" />
+</full-backup-content>

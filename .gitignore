@@ -1,0 +1,13 @@
+.gradle/
+.kotlin/
+.idea/
+local.properties
+**/build/
+*.iml
+*.jks
+*.keystore
+# La clave de firma de las actualizaciones sí se versiona (ver docs/DENILSON_2_2.md).
+!keystore/lumina.jks
+.tools/
+*.hprof
+captures/

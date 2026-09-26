@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12 and above: same idea, cloud backup or device transfer. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <include domain="database" path="lumina-library.db" />
+        <include domain="sharedpref" path="lumina.xml" />
+        <include domain="file" path="covers/" />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="database" path="lumina-library.db" />
+        <include domain="sharedpref" path="lumina.xml" />
+        <include domain="file" path="covers/" />
+    </device-transfer>
+</data-extraction-rules>

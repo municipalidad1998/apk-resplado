@@ -1,48 +1,198 @@
-name: Build StreamVault APK
-
+name: Android verification
 on:
   push:
-    branches: [ main ]
+    branches: [main, 'arena/**']
+  pull_request:
   workflow_dispatch:
-
+permissions:
+  contents: write
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   build:
-    runs-on: ubuntu-latest
-
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
         with:
+          distribution: temurin
           java-version: '17'
-          distribution: 'temurin'
-
-      - name: Setup Android SDK
-        run: |
-          export ANDROID_SDK_ROOT=$HOME/android-sdk
-          mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
-          cd /tmp
-          wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdtools.zip
-          unzip -q cmdtools.zip -d $ANDROID_SDK_ROOT/cmdline-tools
-          mv $ANDROID_SDK_ROOT/cmdline-tools/cmdline-tools $ANDROID_SDK_ROOT/cmdline-tools/latest
-          export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH
-          yes | sdkmanager --licenses > /dev/null 2>&1 || true
-          sdkmanager "build-tools;33.0.1" "platforms;android-34" "platform-tools"
-          echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
-          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
-          echo "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin" >> $GITHUB_PATH
-          echo "$ANDROID_SDK_ROOT/platform-tools" >> $GITHUB_PATH
-          echo "$ANDROID_SDK_ROOT/build-tools/33.0.1" >> $GITHUB_PATH
-
-      - name: Grant execute permission to gradlew
-        run: chmod +x gradlew
-
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug --stacktrace
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
+      - uses: gradle/actions/setup-gradle@v4
         with:
-          name: StreamVault-debug
+          cache-read-only: false
+      - name: Firma estable para las actualizaciones
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          mkdir -p keystore
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            printf '%s' "$KEYSTORE_BASE64" | base64 -d > keystore/lumina.jks
+          elif [ ! -f keystore/lumina.jks ]; then
+            keytool -genkeypair -v -keystore keystore/lumina.jks -storetype JKS \
+              -storepass lumina-denilson -keypass lumina-denilson -alias denilson \
+              -keyalg RSA -keysize 2048 -validity 10950 \
+              -dname "CN=Reproductor de musica Denilson, OU=Musica, O=Denilson, C=GT"
+          fi
+          ls -l keystore
+      - name: Guardar la clave generada
+        if: github.event_name == 'push' && github.ref == 'refs/heads/arena/01a0d0df-apk-resplado'
+        run: |
+          if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then echo "Usando el keystore del secreto."; exit 0; fi
+          if ! git ls-files --error-unmatch keystore/lumina.jks >/dev/null 2>&1; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add -f keystore/lumina.jks
+            git commit -m "build: fijar clave de firma estable para las actualizaciones [skip ci]"
+            git push origin HEAD:arena/01a0d0df-apk-resplado
+          fi
+      - name: Build and verify
+        shell: bash
+        run: |
+          chmod +x gradlew
+          set +e
+          ./gradlew testDebugUnitTest lintDebug assembleDebug assembleDebugAndroidTest --stacktrace > verification.log 2>&1
+          result=$?
+          cat verification.log
+          if [ "$result" -ne 0 ]; then
+            python3 - <<'PYLOG'
+          import re
+          from pathlib import Path
+          lines = Path('verification.log').read_text().splitlines()
+          errors = [line for line in lines if re.search(r'^e:|error:|Error:|What went wrong|Could not|FAILURE|SDK|not found|Exception', line)]
+          for line in (errors or lines[-30:])[:40]:
+              print('::error::' + line.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A'))
+          PYLOG
+          fi
+          exit "$result"
+      - name: Summarize test results
+        if: always()
+        run: |
+          python3 - <<'PYTEST'
+          import glob, os, xml.etree.ElementTree as ET
+          files = glob.glob('app/build/test-results/testDebugUnitTest/TEST-*.xml')
+          totals = dict(tests=0, failures=0, errors=0, skipped=0)
+          for file in files:
+              root = ET.parse(file).getroot()
+              for key in totals: totals[key] += int(root.get(key, 0))
+          failures = []
+          for file in files:
+              root = ET.parse(file).getroot()
+              for case in root.iter('testcase'):
+                  for kind in ('failure', 'error'):
+                      for node in case.findall(kind):
+                          failures.append(case.get('classname', '?') + '.' + case.get('name', '?') + ': ' + (node.get('message') or '')[:300])
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as out:
+              out.write('## JVM tests\n' + str(totals) + '\n')
+          print('::notice::JVM tests: ' + str(totals))
+          for line in failures[:30]:
+              print('::error::' + line.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A'))
+          PYTEST
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lumina-build-reports
+          path: |
+            verification.log
+            app/build/reports/
+            app/build/outputs/androidTest-results/
+            app/schemas/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lumina-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lumina-test-apk
+          path: app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+  device-tests:
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/download-artifact@v4
+        with:
+          name: lumina-debug-apk
+          path: apks/app
+      - uses: actions/download-artifact@v4
+        with:
+          name: lumina-test-apk
+          path: apks/test
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: bash scripts/device-tests.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lumina-device-reports
+          path: device-reports/
+  publish-apk:
+    needs: [build, device-tests]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/arena/01a0d0df-apk-resplado'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with:
+          name: lumina-debug-apk
+          path: apks/app
+      - name: Name the installable APK
+        run: |
+          mkdir -p release
+          cp apks/app/app-debug.apk release/reproductor-denilson-2.7.0.apk
+          ls -l release
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v2.7.0
+          name: Reproductor de música Denilson 2.7.0
+          body: |
+            APK generada y verificada por este flujo (pruebas JVM, Lint y pruebas instrumentadas en
+            Android 15). Mantiene el mismo paquete (`com.streamvault`) y la misma firma que la
+            versión anterior, así que se instala encima sin desinstalar y sin perder la biblioteca.
+
+            Instalación: descarga `reproductor-denilson-2.7.0.apk` y ábrelo en el teléfono. La primera
+            vez Android pedirá autorizar "Instalar apps desconocidas". Después, la app misma instala
+            las siguientes versiones desde Ajustes → Actualizaciones.
+
+            Novedades:
+
+            - Buscador reescrito con motor propio de relevancia. La coincidencia exacta de artista o de
+              título va primero y, cuando el artista existe, no se muestra nada de otros artistas:
+              "Alex Campos" ya no devuelve Alexander, ni canciones que solo dicen "Alex"; "La IBI"
+              reconoce a la artista con o sin artículo y descarta parecidos como "IBI Town" o "IBIS".
+            - Dos bibliotecas independientes. "Música del teléfono" contiene solo archivos que existen
+              físicamente; "Música online" solo lo que llega por Internet. Nunca se mezclan y ninguna
+              canción online se convierte en archivo local.
+            - Pestañas [TELÉFONO] [ONLINE] [TODOS] en el buscador. TODOS muestra los dos bloques
+              separados, cada uno con su distintivo de origen (📱 local / 🌐 Internet).
+            - Validación de metadatos online: ningún resultado se muestra sin título, stream,
+              duración, carátula y origen verificados.
+            - Playlists locales, online y mixtas, con filtro y distintivo por tipo. Agregar una
+              canción online a una playlist no la descarga: sigue sonando por Internet.
+            - Sin conexión, el buscador sigue funcionando con tu música del teléfono y avisa
+              "Sin conexión a Internet" solo en la parte online.
+
+            Recordatorio sobre actualizaciones: el paquete es siempre `com.streamvault` y la firma es
+            siempre la misma clave, por eso puedes instalar esta APK sobre la anterior. El detalle
+            está en docs/FIRMA_Y_ACTUALIZACIONES.md.
+
+            YouTube: el botón abre la búsqueda en la app oficial de YouTube. La app no bloquea
+            anuncios ni reproduce YouTube en segundo plano; eso depende de YouTube Premium.
+          files: release/reproductor-denilson-2.7.0.apk
+          fail_on_unmatched_files: true

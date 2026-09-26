@@ -1,3 +1,3 @@
--keep class com.streamvault.data.model.** { *; }
--keep class androidx.media3.** { *; }
--dontwarn okhttp3.**
+# Release currently does not shrink. If enabling R8, keep Room-generated schema
+# and provider-specific model/runtime rules supplied by the corresponding library.
+-keepattributes Signature,InnerClasses,EnclosingMethod
