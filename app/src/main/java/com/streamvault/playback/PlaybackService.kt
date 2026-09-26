@@ -45,6 +45,7 @@ class PlaybackService : MediaSessionService() {
     private var prefetchId: String? = null
     private val preparedIds = mutableSetOf<String>()
     private val normalizer = LoudnessNormalizer()
+    private val dynamics = DynamicsController()
     private var attenuation = 1f
     private val attributes = AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build()
 
@@ -74,6 +75,7 @@ class PlaybackService : MediaSessionService() {
                 active.pauseAtEndOfMediaItems = !settings.autoPlay
                 active.currentMediaItem?.let { applyTrackGain(it, active) }
                 if (!settings.normalize) normalizer.release()
+                if (CompressorPreset.from(settings.compressor).key == CompressorPreset.OFF.key) dynamics.release()
                 preparedIds.clear(); prefetchJob?.cancel(); prefetchId = null
             }
         }
@@ -114,7 +116,10 @@ class PlaybackService : MediaSessionService() {
         override fun onAudioSessionIdChanged(audioSessionId: Int) {
             PlaybackEvents.audioSessionId.value = audioSessionId
             val item = active.currentMediaItem ?: return
-            normalizer.setBoost(audioSessionId, boostOf(item))
+            val preset = CompressorPreset.from(app.preferences.state.value.compressor)
+            val gain = gainOf(item)
+            dynamics.apply(audioSessionId, preset, CompressorMath.postGainDb(preset, gain))
+            normalizer.setBoost(audioSessionId, CompressorMath.enhancerMillibels(preset, gain))
         }
         override fun onPlayerError(error: PlaybackException) {
             cancelMix()
@@ -242,10 +247,16 @@ class PlaybackService : MediaSessionService() {
     private fun volumeOf(item: MediaItem): Float = LoudnessMath.attenuation(gainOf(item))
     private fun boostOf(item: MediaItem): Int = LoudnessMath.boostMillibels(gainOf(item))
     private fun applyTrackGain(item: MediaItem, player: ExoPlayer) {
+        val preset = CompressorPreset.from(app.preferences.state.value.compressor)
+        val gain = gainOf(item)
         attenuation = volumeOf(item)
-        val boost = boostOf(item)
         val session = player.audioSessionId
-        if (session > 0) normalizer.setBoost(session, boost)
+        if (session > 0) {
+            // The compressor already lifts the track with its post gain and a −1 dB limiter,
+            // so the loudness enhancer stays off to avoid applying the same gain twice.
+            dynamics.apply(session, preset, CompressorMath.postGainDb(preset, gain))
+            normalizer.setBoost(session, CompressorMath.enhancerMillibels(preset, gain))
+        }
         if (player === active) applyVolume(player, 1f)
     }
     private fun isOriginal(item: MediaItem) = item.mediaMetadata.extras?.getBoolean("original") == true
@@ -313,9 +324,10 @@ class PlaybackService : MediaSessionService() {
         active.setAudioAttributes(attributes, true)
         active.setHandleAudioBecomingNoisy(true)
         normalizer.clear(incoming.audioSessionId)
+        dynamics.clear(incoming.audioSessionId)
         val item = active.currentMediaItem
         attenuation = item?.let(::volumeOf) ?: 1f
-        normalizer.setBoost(active.audioSessionId, item?.let(::boostOf) ?: 0)
+        if (item != null) applyTrackGain(item, active)
         applyVolume(active, 1f)
         active.addListener(listener)
         session?.setPlayer(active)
@@ -331,6 +343,7 @@ class PlaybackService : MediaSessionService() {
         if (swapping) return
         preparingIndex = C.INDEX_UNSET; fadeStartPosition = -1
         normalizer.clear(incoming.audioSessionId)
+        dynamics.clear(incoming.audioSessionId)
         incoming.stop(); incoming.clearMediaItems(); incoming.volume = 0f
         applyVolume(active, 1f)
         PlaybackEvents.mixing.value = false
@@ -342,6 +355,7 @@ class PlaybackService : MediaSessionService() {
     override fun onTaskRemoved(rootIntent: Intent?) { if (!active.playWhenReady && gateId == null) { stopSelf() } }
     override fun onDestroy() {
         normalizer.release()
+        dynamics.release()
         savePosition(); ++resolveGeneration; scope.cancel(); PlaybackEvents.analyzing.value = null
         session?.release(); session = null
         active.release(); incoming.release()

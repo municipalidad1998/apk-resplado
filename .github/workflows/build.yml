@@ -146,26 +146,29 @@ jobs:
       - name: Name the installable APK
         run: |
           mkdir -p release
-          cp apks/app/app-debug.apk release/reproductor-denilson-2.3.0.apk
+          cp apks/app/app-debug.apk release/reproductor-denilson-2.4.0.apk
           ls -l release
       - uses: softprops/action-gh-release@v2
         with:
-          tag_name: v2.3.0
-          name: Reproductor de música Denilson 2.3.0
+          tag_name: v2.4.0
+          name: Reproductor de música Denilson 2.4.0
           body: |
             APK generado y verificado por este flujo (pruebas JVM, Lint y pruebas
             instrumentadas en Android 15). Mantiene la misma firma que la versión anterior,
             así que se actualiza sin desinstalar y sin perder la biblioteca.
 
-            Instalación: descarga `reproductor-denilson-2.3.0.apk` y ábrelo en el teléfono.
+            Instalación: descarga `reproductor-denilson-2.4.0.apk` y ábrelo en el teléfono.
             La primera vez, Android pedirá autorizar "Instalar apps desconocidas" para el
             navegador o el gestor de archivos que uses. Después de instalar, la app misma
             puede buscar e instalar las siguientes versiones desde Ajustes → Actualizaciones.
 
-            Novedad: volumen parejo. La app mide el volumen real de cada canción y nivela las
-            que suenan bajas frente a las que suenan fuertes, sin modificar los archivos.
+            Novedades: compresor ajustable (equilibra las partes bajas y altas de una misma
+            canción, con limitador a −1 dB, ideal para cantos y grabaciones en vivo), instalación
+            de la actualización con la API PackageInstaller (Android explica por qué rechaza un
+            APK y la app avisa antes si la firma cambió) y respaldo/restauración de la
+            configuración. Nada de esto modifica tus archivos de audio.
 
             YouTube: el botón abre la búsqueda en la app oficial de YouTube. La app no bloquea
             anuncios ni reproduce YouTube en segundo plano; eso depende de YouTube Premium.
-          files: release/reproductor-denilson-2.3.0.apk
+          files: release/reproductor-denilson-2.4.0.apk
           fail_on_unmatched_files: true

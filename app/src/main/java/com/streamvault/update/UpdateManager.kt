@@ -3,6 +3,7 @@ package com.streamvault.update
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.Dispatchers
@@ -75,6 +76,8 @@ class UpdateManager(private val context: Context) {
 
     /** Opens the official Android installer for an already downloaded APK. */
     fun install(file: File) {
+        if (UpdateInstaller.commit(context, file)) return
+        // Older Android versions or a rejected session: fall back to the classic intent.
         val authority = "${context.packageName}.files"
         val uri: Uri = FileProvider.getUriForFile(context, authority, file)
         val intent = Intent(Intent.ACTION_INSTALL_PACKAGE)
@@ -82,6 +85,32 @@ class UpdateManager(private val context: Context) {
             .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         context.startActivity(intent)
+    }
+
+    /**
+     * Android refuses an update signed with a different key. Detecting it before showing the
+     * installer lets us warn the user instead of failing with a cryptic system message.
+     */
+    fun signatureMatches(file: File): Boolean? = runCatching {
+        val archived = context.packageManager.getPackageArchiveInfo(file.absolutePath, PackageManager.GET_SIGNING_CERTIFICATES) ?: return null
+        val installed = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            context.packageManager.getPackageInfo(context.packageName, PackageManager.GET_SIGNING_CERTIFICATES)
+        } else {
+            @Suppress("DEPRECATION")
+            context.packageManager.getPackageInfo(context.packageName, PackageManager.GET_SIGNATURES)
+        }
+        val mine = installed.signingInfo?.signingCertificateHistory?.map { it.toCharsString() }?.toSet()
+            ?: @Suppress("DEPRECATION") installed.signatures?.map { it.toCharsString() }?.toSet().orEmpty()
+        val theirs = archived.signingInfo?.signingCertificateHistory?.map { it.toCharsString() }?.toSet()
+            ?: @Suppress("DEPRECATION") archived.signatures?.map { it.toCharsString() }?.toSet().orEmpty()
+        if (mine.isEmpty() || theirs.isEmpty()) null else mine.intersect(theirs).isNotEmpty()
+    }.getOrNull()
+
+    /** Asks Android to remove the currently installed build, so a differently signed APK can take its place. */
+    fun requestUninstall() {
+        runCatching {
+            context.startActivity(Intent(Intent.ACTION_UNINSTALL_PACKAGE).setData(Uri.parse("package:${context.packageName}")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        }
     }
 
     /** Android 8+ requires an explicit allowance before an app may trigger installs. */

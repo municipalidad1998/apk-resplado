@@ -6,6 +6,8 @@ import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -25,6 +27,7 @@ fun UpdateSection(vm: LibraryViewModel) {
         is UpdateState.Downloading -> "Descargando… ${(state as UpdateState.Downloading).percent}%"
         is UpdateState.Failed -> (state as UpdateState.Failed).reason
         UpdateState.NeedsInstallPermission -> "Autoriza instalar desde esta fuente y vuelve a intentarlo."
+        is UpdateState.SignatureConflict -> "La versión instalada tiene otra firma: Android exige desinstalarla primero."
     }
     Setting("Buscar actualizaciones", subtitle, vm::checkUpdates)
     Toggle("Buscar automáticamente", "Al abrir la app, como máximo una vez cada 6 horas", settings.autoUpdate) { value ->
@@ -47,6 +50,15 @@ fun UpdateSection(vm: LibraryViewModel) {
                         Button(onClick = { vm.installUpdate(current.info) }) { Text("Descargar e instalar") }
                         TextButton(onClick = { vm.skipUpdate(current.info) }) { Text("Más tarde") }
                     }
+                    var sameSignature by remember(current.info) { mutableStateOf<Boolean?>(null) }
+                    LaunchedEffect(current.info) {
+                        sameSignature = withContext(Dispatchers.IO) {
+                            val file = java.io.File(vm.app.cacheDir, "updates/${current.info.apkName}")
+                            if (file.exists()) vm.updates.signatureMatches(file) else null
+                        }
+                    }
+                    if (sameSignature == false) Text("Este APK está firmado distinto a la app instalada. Android pedirá desinstalar antes; haz un respaldo de tus ajustes si quieres conservarlos.",
+                        fontSize = 11.sp, color = MaterialTheme.colorScheme.error)
                     Text("Se descarga el APK publicado en GitHub y Android pide confirmación antes de instalar. "
                         + "Tus canciones, colas y ajustes se conservan porque la app mantiene la misma firma.",
                         fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -84,6 +96,15 @@ fun UpdateDialog(vm: LibraryViewModel) {
             title = { Text("Autoriza la instalación") },
             text = { Text("Android pide permiso una sola vez para que esta app instale sus propias actualizaciones. Activa «Permitir desde esta fuente» y toca Reintentar.") },
             confirmButton = { TextButton(onClick = { vm.dismissUpdate(); vm.retryPendingInstall() }) { Text("Reintentar") } },
+            dismissButton = { TextButton(onClick = vm::dismissUpdate) { Text("Cancelar") } }
+        )
+        is UpdateState.SignatureConflict -> AlertDialog(
+            onDismissRequest = vm::dismissUpdate,
+            title = { Text("Android no puede actualizarla así") },
+            text = { Text("Ya existe una instalación de esta app firmada con otra clave, y Android no permite reemplazarla sin desinstalar antes. "
+                + "Guarda tus ajustes en Ajustes → Respaldo, desinstala y vuelve a instalar; desde esa versión las futuras actualizaciones sí se instalan sin desinstalar. "
+                + (current.detail?.let { "\n\nDetalle de Android: $it" } ?: "")) },
+            confirmButton = { TextButton(onClick = { vm.dismissUpdate(); vm.uninstallCurrentBuild() }) { Text("Desinstalar la actual") } },
             dismissButton = { TextButton(onClick = vm::dismissUpdate) { Text("Cancelar") } }
         )
         is UpdateState.UpToDate -> AlertDialog(

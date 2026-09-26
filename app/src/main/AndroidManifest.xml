@@ -16,7 +16,7 @@
             <data android:scheme="https" />
         </intent>
     </queries>
-    <application android:name=".LuminaApp" android:allowBackup="false" android:icon="@drawable/ic_lumina" android:label="@string/app_name" android:supportsRtl="true" android:theme="@style/Theme.Lumina">
+    <application android:name=".LuminaApp" android:allowBackup="true" android:fullBackupContent="@xml/backup_rules" android:dataExtractionRules="@xml/data_extraction_rules" android:icon="@drawable/ic_lumina" android:label="@string/app_name" android:supportsRtl="true" android:theme="@style/Theme.Lumina">
         <activity android:name=".ui.MainActivity" android:exported="true" android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -30,5 +30,6 @@
         <provider android:name="androidx.core.content.FileProvider" android:authorities="${applicationId}.files" android:exported="false" android:grantUriPermissions="true">
             <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths" />
         </provider>
+        <receiver android:name=".update.InstallResultReceiver" android:exported="false" />
     </application>
 </manifest>

@@ -19,7 +19,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.work.WorkInfo
 import com.streamvault.BuildConfig
 import com.streamvault.R
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import com.streamvault.analysis.AnalysisWorker
+import com.streamvault.playback.CompressorPreset
 import com.streamvault.playback.PlaybackEvents
 import com.streamvault.scanner.ScanWorker
 
@@ -33,6 +36,8 @@ fun SettingsScreen(vm: LibraryViewModel, permission: () -> Unit, folder: () -> U
     var exclusions by remember { mutableStateOf(false) }
     var excluded by remember(settings.excludedFolders) { mutableStateOf(settings.excludedFolders) }
     val update = vm.app.preferences::update
+    val backup = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri -> if (uri != null) vm.backupSettings(uri) }
+    val restore = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> if (uri != null) vm.restoreSettings(uri) }
     LazyColumn(contentPadding = PaddingValues(start = 22.dp, end = 22.dp, bottom = 28.dp)) {
         item { PageHeader("A TU MANERA", "Ajustes", "Pequeños detalles. Tu experiencia perfecta.") }
         item {
@@ -80,6 +85,10 @@ fun SettingsScreen(vm: LibraryViewModel, permission: () -> Unit, folder: () -> U
             Toggle("Volumen parejo", "Nivela tus canciones para que ninguna suene más bajo que las demás", settings.normalize) { value -> update { it.copy(normalize = value) } }
             Setting("Nivel objetivo", if (settings.normalize) "${settings.targetLoudnessDb} dBFS RMS · ${if (settings.targetLoudnessDb >= -14) "más fuerte" else if (settings.targetLoudnessDb <= -20) "más suave" else "equilibrado"}" else "Desactivado", { choose = "Nivel objetivo" })
             Setting("Medir el volumen de tu biblioteca", "Analiza el volumen real de cada canción en segundo plano", { AnalysisWorker.enqueue(context); vm.notify("Midiendo el volumen de la biblioteca en segundo plano") })
+            Setting("Compresor", CompressorPreset.from(settings.compressor).label + if (settings.compressor == "off") "" else " · ${CompressorPreset.from(settings.compressor).description}", { choose = "Compresor" })
+            Text("El compresor baja lo muy fuerte y sube lo muy suave dentro de la misma canción, como el efecto Compresor de Audacity, y un limitador a −1 dB evita que se distorsione al subir el volumen. "
+                + "Funciona en tiempo real, sobre la reproducción: el archivo original nunca se modifica. Requiere Android 9 o superior.",
+                fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 6.dp))
             Text("Se decodifica el audio de cada pista para medir su volumen real y se guarda un ajuste por canción. "
                 + "Las canciones más bajas se amplifican con el efecto de sonido del sistema y las más fuertes se atenúan; el archivo original nunca cambia. "
                 + "Es una medición RMS de una ventana de 90 segundos, no loudness LUFS de broadcast.",
@@ -93,6 +102,12 @@ fun SettingsScreen(vm: LibraryViewModel, permission: () -> Unit, folder: () -> U
                 } catch (_: Exception) { vm.notify("Este dispositivo no ofrece un ecualizador compatible") }
             })
             UpdateSection(vm)
+            SectionTitle("Respaldo")
+            Setting("Guardar mis ajustes", "Exporta la configuración a un archivo que puedes conservar", backup)
+            Setting("Restaurar mis ajustes", "Recupera la configuración desde un respaldo anterior", restore)
+            Text("La biblioteca, las colas y los ajustes se conservan al actualizar. Si alguna vez tienes que desinstalar, este respaldo te devuelve la configuración; "
+                + "Android también puede restaurar la base de datos automáticamente al reinstalar con la misma cuenta.",
+                fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 6.dp))
             SectionTitle("Hecha para tu música")
             Text("${com.streamvault.BuildConfig.VERSION_NAME} · ${context.getString(R.string.app_name)}\nLocal por naturaleza. Sin cuenta, sin anuncios y sin subir tus archivos. La separación de voz necesita un proveedor adicional.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 20.sp)
         }
@@ -105,6 +120,7 @@ fun SettingsScreen(vm: LibraryViewModel, permission: () -> Unit, folder: () -> U
             "Sensibilidad" -> listOf("-60" to "Alta · −60 dBFS", "-45" to "Equilibrada · −45 dBFS", "-30" to "Baja · −30 dBFS")
             "Silencio mínimo" -> listOf(0, 1, 2, 3, 5).map { it.toString() to "$it segundos" }
             "Nivel objetivo" -> listOf(-22, -20, -18, -16, -14, -12).map { it.toString() to "$it dBFS RMS" }
+            "Compresor" -> CompressorPreset.ALL.map { it.key to it.label }
             else -> listOf("system" to "Automático según el sistema", "dark" to "Oscuro", "light" to "Claro")
         }
         AlertDialog(onDismissRequest = { choose = "" }, title = { Text(choose) }, text = {
@@ -113,7 +129,8 @@ fun SettingsScreen(vm: LibraryViewModel, permission: () -> Unit, folder: () -> U
                 update { old -> when (choose) {
                     "Crossfade" -> old.copy(crossfade = key.toInt()); "Saltar ± segundos" -> old.copy(skipSeconds = key.toInt())
                     "Repetición" -> old.copy(repeat = key.toInt()); "Sensibilidad" -> old.copy(thresholdDb = key.toInt())
-                    "Silencio mínimo" -> old.copy(minimumSilence = key.toInt()); "Nivel objetivo" -> old.copy(targetLoudnessDb = key.toInt()); else -> old.copy(theme = key)
+                    "Silencio mínimo" -> old.copy(minimumSilence = key.toInt()); "Nivel objetivo" -> old.copy(targetLoudnessDb = key.toInt())
+                    "Compresor" -> old.copy(compressor = key); else -> old.copy(theme = key)
                 } }
                 if (reanalyze && vm.settings.value.detectSilence) AnalysisWorker.enqueue(context)
                 choose = ""

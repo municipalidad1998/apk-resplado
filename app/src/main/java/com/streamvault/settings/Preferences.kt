@@ -23,7 +23,8 @@ data class PlayerSettings(
     val autoUpdate: Boolean = true,
     val dynamicColor: Boolean = true,
     val normalize: Boolean = true,
-    val targetLoudnessDb: Int = -16
+    val targetLoudnessDb: Int = -16,
+    val compressor: String = "balanced"
 ) { val analysisKey get() = "rms-v3:$thresholdDb:$minimumSilence" }
 
 class Preferences(context: Context) {
@@ -42,7 +43,8 @@ class Preferences(context: Context) {
         autoUpdate = prefs.getBoolean("autoUpdate", true),
         dynamicColor = prefs.getBoolean("dynamicColor", true),
         normalize = prefs.getBoolean("normalize", true),
-        targetLoudnessDb = prefs.getInt("targetLoudness", -16)
+        targetLoudnessDb = prefs.getInt("targetLoudness", -16),
+        compressor = prefs.getString("compressor", "balanced")!!
     )
     fun update(change: (PlayerSettings) -> PlayerSettings) {
         val s = change(mutable.value)
@@ -52,12 +54,26 @@ class Preferences(context: Context) {
             .putInt("repeat", s.repeat).putBoolean("fades", s.fades).putBoolean("animations", s.animations)
             .putBoolean("covers", s.largeCovers).putString("excluded", s.excludedFolders)
             .putBoolean("autoUpdate", s.autoUpdate).putBoolean("dynamicColor", s.dynamicColor)
-            .putBoolean("normalize", s.normalize).putInt("targetLoudness", s.targetLoudnessDb).apply()
+            .putBoolean("normalize", s.normalize).putInt("targetLoudness", s.targetLoudnessDb)
+            .putString("compressor", s.compressor).apply()
         mutable.value = s
     }
     fun roots(): Set<String> = prefs.getStringSet("roots", emptySet())!!.toSet()
     fun addRoot(uri: String) { prefs.edit().putStringSet("roots", roots() + uri).apply() }
     fun removeRoot(uri: String) { prefs.edit().putStringSet("roots", roots() - uri).apply() }
+    /** Export and restore of the configuration, so it survives even a clean reinstall. */
+    fun export(): String = SettingsBackup.toJson(mutable.value)
+
+    /** Returns how many values were restored; throws when the file is not a Lúmina backup. */
+    fun import(text: String): Int {
+        if (!SettingsBackup.isBackup(text)) throw IllegalStateException("El archivo no es un respaldo de la app")
+        val editor = prefs.edit()
+        val applied = SettingsBackup.applyTo(editor, org.json.JSONObject(text))
+        editor.apply()
+        mutable.value = read()
+        return applied
+    }
+
     var lastUpdateCheck: Long
         get() = prefs.getLong("updateCheckAt", 0L)
         set(value) { prefs.edit().putLong("updateCheckAt", value).apply() }

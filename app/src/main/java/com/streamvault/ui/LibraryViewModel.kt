@@ -19,7 +19,9 @@ import com.streamvault.analysis.SilenceAnalyzer
 import com.streamvault.data.*
 import com.streamvault.playback.*
 import com.streamvault.scanner.ScanWorker
+import com.streamvault.playback.CompressorPreset
 import com.streamvault.update.ReleaseInfo
+import com.streamvault.update.UpdateInstaller
 import com.streamvault.update.UpdateManager
 import com.streamvault.update.UpdateParser
 import kotlinx.coroutines.*
@@ -55,7 +57,7 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
     val message = MutableStateFlow<String?>(null)
     val busy = MutableStateFlow(false)
     val updateState = MutableStateFlow<UpdateState>(UpdateState.Idle)
-    private val updates = UpdateManager(application)
+    val updates = UpdateManager(application)
     val roots = MutableStateFlow(app.preferences.roots().toList())
     val playback = MutableStateFlow(PlaybackState())
     val mixing = PlaybackEvents.mixing
@@ -74,6 +76,16 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
         }
     }
     init {
+        UpdateInstaller.register(app)
+        viewModelScope.launch {
+            UpdateInstaller.status.collect { status ->
+                when (status) {
+                    is UpdateInstaller.Status.Conflict -> updateState.value = UpdateState.SignatureConflict(status.detail)
+                    is UpdateInstaller.Status.Failed -> updateState.value = UpdateState.Failed(status.detail ?: "Android no pudo instalar la actualización")
+                    else -> Unit
+                }
+            }
+        }
         future.addListener({
             runCatching { future.get() }.onSuccess { c -> controller = c; c.addListener(listener); sync(); controllerReady.complete(c) }
                 .onFailure { controllerReady.completeExceptionally(it); message.value = "No se pudo conectar el reproductor: ${it.localizedMessage}" }
@@ -269,6 +281,27 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
             .onFailure { notify("No se pudo abrir el instalador de Android") } else updates.openInstallPermission()
     }
 
+    fun backupSettings(uri: Uri) = task {
+        val json = app.preferences.export()
+        withContext(Dispatchers.IO) {
+            app.contentResolver.openOutputStream(uri)?.use { it.write(json.toByteArray()) }
+                ?: error("No se pudo escribir el respaldo en esa ubicación")
+        }
+        notify("Respaldo guardado. Guárdalo donde puedas recuperarlo si reinstalas la app.")
+    }
+
+    fun restoreSettings(uri: Uri) = task {
+        val text = withContext(Dispatchers.IO) {
+            app.contentResolver.openInputStream(uri)?.use { it.bufferedReader().readText() }
+                ?: error("No se pudo leer el archivo de respaldo")
+        }
+        val applied = app.preferences.import(text)
+        notify("Ajustes restaurados: $applied valores.")
+    }
+
+    /** Only offered when Android itself refuses to update because the signature changed. */
+    fun uninstallCurrentBuild() { updates.requestUninstall() }
+
     fun skipUpdate(info: ReleaseInfo) { app.preferences.skippedUpdate = info.tag; updateState.value = UpdateState.Idle }
 
     fun dismissUpdate() { updateState.value = UpdateState.Idle }
@@ -287,6 +320,7 @@ sealed interface UpdateState {
     data class Downloading(val percent: Int) : UpdateState
     data class UpToDate(val version: String) : UpdateState
     data class Failed(val reason: String) : UpdateState
+    data class SignatureConflict(val detail: String?) : UpdateState
     data object NeedsInstallPermission : UpdateState
 }
 
