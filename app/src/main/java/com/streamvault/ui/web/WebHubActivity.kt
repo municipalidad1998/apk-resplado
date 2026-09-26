@@ -81,7 +81,6 @@ class WebHubActivity : AppCompatActivity() {
             }
 
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
-                val u = request.url.toString()
                 // Protege contra redirecciones peligrosas fuera de la fuente
                 val host = request.url.host ?: return true
                 val allowed = host.endsWith("youtube.com") || host.endsWith("googlevideo.com") ||

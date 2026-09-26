@@ -1,0 +1,206 @@
+[
+    {
+        "merged": "com.streamvault.app-merged_res-59:/layout_activity_player.xml.flat",
+        "source": "com.streamvault.app-main-61:/layout/activity_player.xml"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/layout_item_side_channel.xml.flat",
+        "source": "com.streamvault.app-main-61:/layout/item_side_channel.xml"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/drawable_live_dot.xml.flat",
+        "source": "com.streamvault.app-main-61:/drawable/live_dot.xml"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/drawable_ic_movie.xml.flat",
+        "source": "com.streamvault.app-main-61:/drawable/ic_movie.xml"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/layout_activity_add_source.xml.flat",
+        "source": "com.streamvault.app-main-61:/layout/activity_add_source.xml"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/drawable_input_bg.xml.flat",
+        "source": "com.streamvault.app-main-61:/drawable/input_bg.xml"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/layout_activity_local_music.xml.flat",
+        "source": "com.streamvault.app-main-61:/layout/activity_local_music.xml"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/drawable_btn_secondary.xml.flat",
+        "source": "com.streamvault.app-main-61:/drawable/btn_secondary.xml"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/layout_activity_settings.xml.flat",
+        "source": "com.streamvault.app-main-61:/layout/activity_settings.xml"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/layout_item_group_header.xml.flat",
+        "source": "com.streamvault.app-main-61:/layout/item_group_header.xml"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/drawable_live_badge.xml.flat",
+        "source": "com.streamvault.app-main-61:/drawable/live_badge.xml"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/drawable_ic_arrow_back.xml.flat",
+        "source": "com.streamvault.app-main-61:/drawable/ic_arrow_back.xml"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/drawable_ic_channel.xml.flat",
+        "source": "com.streamvault.app-main-61:/drawable/ic_channel.xml"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/layout_item_channel.xml.flat",
+        "source": "com.streamvault.app-main-61:/layout/item_channel.xml"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/drawable_item_bg_selector.xml.flat",
+        "source": "com.streamvault.app-main-61:/drawable/item_bg_selector.xml"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/drawable_chip_normal.xml.flat",
+        "source": "com.streamvault.app-main-61:/drawable/chip_normal.xml"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/drawable_ic_series.xml.flat",
+        "source": "com.streamvault.app-main-61:/drawable/ic_series.xml"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/drawable_tab_selector.xml.flat",
+        "source": "com.streamvault.app-main-61:/drawable/tab_selector.xml"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/layout_exo_player_controls.xml.flat",
+        "source": "com.streamvault.app-main-61:/layout/exo_player_controls.xml"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/layout_activity_main.xml.flat",
+        "source": "com.streamvault.app-main-61:/layout/activity_main.xml"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/drawable_cover_bg.xml.flat",
+        "source": "com.streamvault.app-main-61:/drawable/cover_bg.xml"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/drawable_btn_icon_circle.xml.flat",
+        "source": "com.streamvault.app-main-61:/drawable/btn_icon_circle.xml"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/drawable_ic_film.xml.flat",
+        "source": "com.streamvault.app-main-61:/drawable/ic_film.xml"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/drawable_ic_quality.xml.flat",
+        "source": "com.streamvault.app-main-61:/drawable/ic_quality.xml"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/drawable_btn_primary.xml.flat",
+        "source": "com.streamvault.app-main-61:/drawable/btn_primary.xml"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/drawable_circle_button.xml.flat",
+        "source": "com.streamvault.app-main-61:/drawable/circle_button.xml"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/layout_activity_player_music.xml.flat",
+        "source": "com.streamvault.app-main-61:/layout/activity_player_music.xml"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/drawable_gradient_top.xml.flat",
+        "source": "com.streamvault.app-main-61:/drawable/gradient_top.xml"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/drawable_ic_launcher_bg.xml.flat",
+        "source": "com.streamvault.app-main-61:/drawable/ic_launcher_bg.xml"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/mipmap-hdpi_ic_launcher.png.flat",
+        "source": "com.streamvault.app-main-61:/mipmap-hdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/drawable_side_panel_bg.xml.flat",
+        "source": "com.streamvault.app-main-61:/drawable/side_panel_bg.xml"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/layout_item_grid.xml.flat",
+        "source": "com.streamvault.app-main-61:/layout/item_grid.xml"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/drawable_chip_selected.xml.flat",
+        "source": "com.streamvault.app-main-61:/drawable/chip_selected.xml"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/drawable_btn_icon_circle_accent.xml.flat",
+        "source": "com.streamvault.app-main-61:/drawable/btn_icon_circle_accent.xml"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/drawable_ic_list.xml.flat",
+        "source": "com.streamvault.app-main-61:/drawable/ic_list.xml"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/drawable_splash_bg.xml.flat",
+        "source": "com.streamvault.app-main-61:/drawable/splash_bg.xml"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/drawable_gradient_bottom.xml.flat",
+        "source": "com.streamvault.app-main-61:/drawable/gradient_bottom.xml"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/layout_item_hub.xml.flat",
+        "source": "com.streamvault.app-main-61:/layout/item_hub.xml"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/drawable_search_bg.xml.flat",
+        "source": "com.streamvault.app-main-61:/drawable/search_bg.xml"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/layout_item_song.xml.flat",
+        "source": "com.streamvault.app-main-61:/layout/item_song.xml"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/drawable_error_bg.xml.flat",
+        "source": "com.streamvault.app-main-61:/drawable/error_bg.xml"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/layout_activity_telegram_config.xml.flat",
+        "source": "com.streamvault.app-main-61:/layout/activity_telegram_config.xml"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/drawable_circle_button_dark.xml.flat",
+        "source": "com.streamvault.app-main-61:/drawable/circle_button_dark.xml"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/layout_activity_splash.xml.flat",
+        "source": "com.streamvault.app-main-61:/layout/activity_splash.xml"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/drawable_ic_live.xml.flat",
+        "source": "com.streamvault.app-main-61:/drawable/ic_live.xml"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/layout_activity_home_hub.xml.flat",
+        "source": "com.streamvault.app-main-61:/layout/activity_home_hub.xml"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/drawable_logo_circle_bg.xml.flat",
+        "source": "com.streamvault.app-main-61:/drawable/logo_circle_bg.xml"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/drawable_item_bg.xml.flat",
+        "source": "com.streamvault.app-main-61:/drawable/item_bg.xml"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/drawable_logo_bg.xml.flat",
+        "source": "com.streamvault.app-main-61:/drawable/logo_bg.xml"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/drawable_dialog_bg.xml.flat",
+        "source": "com.streamvault.app-main-61:/drawable/dialog_bg.xml"
+    },
+    {
+        "merged": "com.streamvault.app-merged_res-59:/layout_activity_web_hub.xml.flat",
+        "source": "com.streamvault.app-main-61:/layout/activity_web_hub.xml"
+    }
+]

@@ -152,7 +152,7 @@ class LocalMusicActivity : AppCompatActivity() {
 
     // ---------------- Videos / Fotos / Documentos ----------------
 
-    private data class SimpleItem(val name: String, val uri: Uri, val mime: String?)
+    data class SimpleItem(val name: String, val uri: Uri, val mime: String?)
 
     private fun loadSimpleMedia(collection: Uri, mimeFallback: String?) {
         showEmpty("Escaneando…")
@@ -237,12 +237,12 @@ class LocalMusicActivity : AppCompatActivity() {
         override fun getItemCount() = items.size
 
         override fun onBindViewHolder(h: VH, pos: Int) {
-            val it = items[pos]
-            h.title.text = it.name
-            h.sub.text = it.mime ?: "archivo"
+            val item = items[pos]
+            h.title.text = item.name
+            h.sub.text = item.mime ?: "archivo"
             h.dur.text = ""
-            Glide.with(h.art).load(it.uri).placeholder(R.drawable.ic_film).error(R.drawable.ic_film).into(h.art)
-            h.itemView.setOnClickListener { onClick(it) }
+            Glide.with(h.art).load(item.uri).placeholder(R.drawable.ic_film).error(R.drawable.ic_film).into(h.art)
+            h.itemView.setOnClickListener { onClick(item) }
         }
     }
 }

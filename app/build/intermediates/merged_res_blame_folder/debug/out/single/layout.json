@@ -1,0 +1,70 @@
+[
+    {
+        "merged": "com.streamvault.app-mergeDebugResources-58:/layout/item_song.xml",
+        "source": "com.streamvault.app-main-61:/layout/item_song.xml"
+    },
+    {
+        "merged": "com.streamvault.app-mergeDebugResources-58:/layout/activity_local_music.xml",
+        "source": "com.streamvault.app-main-61:/layout/activity_local_music.xml"
+    },
+    {
+        "merged": "com.streamvault.app-mergeDebugResources-58:/layout/item_group_header.xml",
+        "source": "com.streamvault.app-main-61:/layout/item_group_header.xml"
+    },
+    {
+        "merged": "com.streamvault.app-mergeDebugResources-58:/layout/activity_home_hub.xml",
+        "source": "com.streamvault.app-main-61:/layout/activity_home_hub.xml"
+    },
+    {
+        "merged": "com.streamvault.app-mergeDebugResources-58:/layout/item_grid.xml",
+        "source": "com.streamvault.app-main-61:/layout/item_grid.xml"
+    },
+    {
+        "merged": "com.streamvault.app-mergeDebugResources-58:/layout/activity_add_source.xml",
+        "source": "com.streamvault.app-main-61:/layout/activity_add_source.xml"
+    },
+    {
+        "merged": "com.streamvault.app-mergeDebugResources-58:/layout/activity_main.xml",
+        "source": "com.streamvault.app-main-61:/layout/activity_main.xml"
+    },
+    {
+        "merged": "com.streamvault.app-mergeDebugResources-58:/layout/activity_player.xml",
+        "source": "com.streamvault.app-main-61:/layout/activity_player.xml"
+    },
+    {
+        "merged": "com.streamvault.app-mergeDebugResources-58:/layout/exo_player_controls.xml",
+        "source": "com.streamvault.app-main-61:/layout/exo_player_controls.xml"
+    },
+    {
+        "merged": "com.streamvault.app-mergeDebugResources-58:/layout/activity_web_hub.xml",
+        "source": "com.streamvault.app-main-61:/layout/activity_web_hub.xml"
+    },
+    {
+        "merged": "com.streamvault.app-mergeDebugResources-58:/layout/activity_telegram_config.xml",
+        "source": "com.streamvault.app-main-61:/layout/activity_telegram_config.xml"
+    },
+    {
+        "merged": "com.streamvault.app-mergeDebugResources-58:/layout/item_channel.xml",
+        "source": "com.streamvault.app-main-61:/layout/item_channel.xml"
+    },
+    {
+        "merged": "com.streamvault.app-mergeDebugResources-58:/layout/activity_splash.xml",
+        "source": "com.streamvault.app-main-61:/layout/activity_splash.xml"
+    },
+    {
+        "merged": "com.streamvault.app-mergeDebugResources-58:/layout/activity_player_music.xml",
+        "source": "com.streamvault.app-main-61:/layout/activity_player_music.xml"
+    },
+    {
+        "merged": "com.streamvault.app-mergeDebugResources-58:/layout/item_hub.xml",
+        "source": "com.streamvault.app-main-61:/layout/item_hub.xml"
+    },
+    {
+        "merged": "com.streamvault.app-mergeDebugResources-58:/layout/item_side_channel.xml",
+        "source": "com.streamvault.app-main-61:/layout/item_side_channel.xml"
+    },
+    {
+        "merged": "com.streamvault.app-mergeDebugResources-58:/layout/activity_settings.xml",
+        "source": "com.streamvault.app-main-61:/layout/activity_settings.xml"
+    }
+]

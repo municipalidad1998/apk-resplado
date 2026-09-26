@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#0D0D14">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <ImageButton
+                android:id="@+id/btnBackTelegram"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_arrow_back" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="☁ Telegram Cloud"
+                android:textColor="#FFFFFF"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:layout_marginStart="8dp" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Conexión mediante Telegram MTProto (no Bot API).\nConsigue API ID y API Hash en my.telegram.org"
+            android:textColor="#8888AA"
+            android:textSize="12sp"
+            android:layout_marginVertical="14dp" />
+
+        <EditText
+            android:id="@+id/etApiId"
+            style="@style/TelegramInput"
+            android:hint="API ID"
+            android:inputType="number" />
+
+        <EditText
+            android:id="@+id/etApiHash"
+            style="@style/TelegramInput"
+            android:hint="API Hash"
+            android:inputType="text" />
+
+        <EditText
+            android:id="@+id/etPhone"
+            style="@style/TelegramInput"
+            android:hint="Número telefónico (+51…)"
+            android:inputType="phone" />
+
+        <EditText
+            android:id="@+id/etCode"
+            style="@style/TelegramInput"
+            android:hint="Código de verificación"
+            android:inputType="number" />
+
+        <EditText
+            android:id="@+id/et2fa"
+            style="@style/TelegramInput"
+            android:hint="Contraseña 2FA (si la tienes)"
+            android:inputType="textPassword" />
+
+        <Button
+            android:id="@+id/btnSaveTelegram"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="20dp"
+            android:background="@drawable/btn_primary"
+            android:text="Guardar configuración"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="☁ Integración MTProto con subida/descarga fragmentada llega en la próxima fase."
+            android:textColor="#666688"
+            android:textSize="11sp"
+            android:gravity="center"
+            android:layout_marginTop="16dp" />
+    </LinearLayout>
+</ScrollView>

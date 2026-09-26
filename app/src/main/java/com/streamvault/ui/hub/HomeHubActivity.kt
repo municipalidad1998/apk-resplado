@@ -94,10 +94,10 @@ class HomeHubActivity : AppCompatActivity() {
         override fun getItemCount() = items.size
 
         override fun onBindViewHolder(h: VH, pos: Int) {
-            val it = items[pos]
-            h.icon.text = it.icon
-            h.title.text = it.title
-            h.itemView.setOnClickListener { it.action() }
+            val item = items[pos]
+            h.icon.text = item.icon
+            h.title.text = item.title
+            h.itemView.setOnClickListener { item.action() }
         }
     }
 }
