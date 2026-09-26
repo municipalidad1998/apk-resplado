@@ -101,6 +101,11 @@ class PlayerMusicActivity : AppCompatActivity() {
 
         btnFav = findViewById(R.id.btnFav)
         btnFav.setOnClickListener {
+            if (!reduceAnimations()) {
+                btnFav.animate().scaleX(1.4f).scaleY(1.4f).setDuration(130)
+                    .withEndAction { btnFav.animate().scaleX(1f).scaleY(1f).setDuration(160).start() }
+                    .start()
+            }
             val idx = controller?.currentMediaItemIndex ?: return@setOnClickListener
             val s = queue.getOrNull(idx) ?: return@setOnClickListener
             lifecycleScope.launch {
@@ -141,7 +146,12 @@ class PlayerMusicActivity : AppCompatActivity() {
         findViewById<ImageButton>(R.id.btnNext).setOnClickListener { controller?.seekToNextMediaItem() }
         findViewById<ImageButton>(R.id.btnPrev).setOnClickListener { controller?.seekToPreviousMediaItem() }
         btnPlay.setOnClickListener {
-            controller?.let { if (it.isPlaying) it.pause() else it.play() }
+            if (!reduceAnimations()) {
+                it.animate().scaleX(0.85f).scaleY(0.85f).setDuration(90)
+                    .withEndAction { it.animate().scaleX(1f).scaleY(1f).setDuration(120).start() }
+                    .start()
+            }
+            controller?.let { c -> if (c.isPlaying) c.pause() else c.play() }
         }
         btnShuffle.setOnClickListener {
             controller?.let {
@@ -261,8 +271,17 @@ class PlayerMusicActivity : AppCompatActivity() {
         }
     }
 
+    private fun reduceAnimations(): Boolean =
+        getSharedPreferences("app_settings", MODE_PRIVATE).getBoolean("reduce_animations", false)
+
     private fun updateSongUI(s: LocalSong?) {
         s ?: return
+        if (!reduceAnimations()) {
+            ivCover.animate().alpha(0.3f).scaleX(0.96f).scaleY(0.96f).setDuration(140)
+                .withEndAction {
+                    ivCover.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(220).start()
+                }.start()
+        }
         tvTitle.text = s.title
         tvArtist.text = "${s.artist} · ${s.album}"
         Glide.with(this).load(s.albumArtUri)

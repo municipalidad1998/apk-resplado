@@ -129,6 +129,13 @@ class SettingsActivity : AppCompatActivity() {
             com.streamvault.playback.PlaybackSettings.setGapless(this, checked)
         }
 
+        // Reducir animaciones
+        val swAnim = findViewById<Switch>(R.id.swReduceAnimations)
+        swAnim.isChecked = prefs.getBoolean("reduce_animations", false)
+        swAnim.setOnCheckedChangeListener { _, checked ->
+            prefs.edit().putBoolean("reduce_animations", checked).apply()
+        }
+
         // Actualización
         findViewById<TextView>(R.id.tvCurrentVersion).text =
             "Versión actual: ${BuildConfig.VERSION_NAME} (código ${BuildConfig.VERSION_CODE})"
