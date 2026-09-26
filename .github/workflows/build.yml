@@ -108,6 +108,9 @@ jobs:
           path: app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
   device-tests:
     needs: build
+    # One emulator is enough: the pull request job already compiles and runs the JVM tests,
+    # so only the push job pays for the emulator (and it is the one that publishes).
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:

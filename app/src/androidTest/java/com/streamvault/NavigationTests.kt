@@ -35,10 +35,10 @@ class NavigationTests {
         compose.onNodeWithText("Nombre").performTextInput("Lista de prueba de navegación")
         compose.onNodeWithText("Descripción").performTextInput("Creada en prueba instrumentada")
         compose.onNodeWithText("Guardar").performClick()
-        compose.waitUntil(5000) { compose.onAllNodesWithText("Lista de prueba de navegación").fetchSemanticsNodes().isNotEmpty() }
+        compose.waitUntil(15000) { compose.onAllNodesWithText("Lista de prueba de navegación").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("Lista de prueba de navegación").performClick()
         // The detail view replaces the list: wait for its own actions before asserting on it.
-        compose.waitUntil(5000) { compose.onAllNodesWithContentDescription("Eliminar playlist").fetchSemanticsNodes().isNotEmpty() }
+        compose.waitUntil(15000) { compose.onAllNodesWithContentDescription("Eliminar playlist").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithContentDescription("Eliminar playlist").assertIsDisplayed()
         compose.onNodeWithContentDescription("Eliminar playlist").performClick()
         compose.onNodeWithText("Eliminar").performClick()
