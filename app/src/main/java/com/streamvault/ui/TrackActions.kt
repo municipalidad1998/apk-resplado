@@ -97,8 +97,8 @@ fun TrackActions(vm: LibraryViewModel, initialTrack: Track, dismiss: () -> Unit)
         }
     }
     when (action) {
-        "edit" -> EditTrack(track, dismiss) { name, title, artist, album, genre, notes, tags, year, number, disc ->
-            vm.edit(track, name, title, artist, album, genre, notes, tags, year, number, disc); dismiss() }
+        "edit" -> EditTrack(track, dismiss) { name, title, artist, album, albumArtist, genre, notes, tags, year, number, disc ->
+            vm.edit(track, name, title, artist, album, genre, notes, tags, year, number, disc, albumArtist); dismiss() }
         "playlist" -> AlertDialog(onDismissRequest = dismiss, title = { Text("Agregar a playlist") }, text = {
             LazyColumn {
                 if (playlists.isEmpty()) item { Text("Crea tu primera playlist con el botón de abajo.") }
@@ -121,7 +121,8 @@ fun TrackActions(vm: LibraryViewModel, initialTrack: Track, dismiss: () -> Unit)
                 Info("DURACIÓN · TAMAÑO", "${time(track.durationMs)} · ${"%.2f".format(track.size / 1048576.0)} MB")
                 Info("FECHA", if (track.date > 0) DateFormat.getDateTimeInstance().format(Date(track.date)) else "No disponible")
                 Info("UBICACIÓN", track.folder); Info("URI", track.uri)
-                Info("ÁLBUM · GÉNERO", "${track.album} · ${track.genre}")
+                Info("ÁLBUM · ARTISTA DEL ÁLBUM", "${track.album} · ${track.albumArtist.ifBlank { track.artist }}")
+                Info("GÉNERO", track.genre)
                 Info("PISTA · DISCO", "${if (track.trackNumber > 0) track.trackNumber.toString() else "—"} · ${if (track.discNumber > 0) track.discNumber.toString() else "—"}")
                 Info("LOUDNESS MEDIDO", "${LoudnessMath.lufsLabel(track.loudnessDb)} · pico ${LoudnessMath.peakLabel(track.peakDb)}")
                 Info("GANANCIA APLICADA", LoudnessMath.label(LoudnessMath.gainDb(settings.targetLoudnessDb.toFloat(), track.loudnessDb, track.peakDb), track.loudnessDb != null))
@@ -144,15 +145,16 @@ private fun yearToMillis(value: String): Long {
 }
 
 @Composable
-private fun EditTrack(track: Track, dismiss: () -> Unit, save: (String, String, String, String, String, String, String, Long, Int, Int) -> Unit) {
+private fun EditTrack(track: Track, dismiss: () -> Unit, save: (String, String, String, String, String, String, String, String, Long, Int, Int) -> Unit) {
     var name by remember { mutableStateOf(track.customName) }; var title by remember { mutableStateOf(track.title) }
     var artist by remember { mutableStateOf(track.artist) }; var album by remember { mutableStateOf(track.album) }
     var genre by remember { mutableStateOf(track.genre) }; var notes by remember { mutableStateOf(track.notes) }; var tags by remember { mutableStateOf(track.tags) }
+    var albumArtist by remember { mutableStateOf(track.albumArtist) }
     var year by remember { mutableStateOf(if (track.date > 0) java.util.Calendar.getInstance().apply { timeInMillis = track.date }.get(java.util.Calendar.YEAR).toString() else "") }
     var number by remember { mutableStateOf(if (track.trackNumber > 0) track.trackNumber.toString() else "") }
     var disc by remember { mutableStateOf(if (track.discNumber > 0) track.discNumber.toString() else "") }
     val confirm: () -> Unit = {
-        save(name, title, artist, album, genre, notes, tags, yearToMillis(year), number.toIntOrNull() ?: 0, disc.toIntOrNull() ?: 0)
+        save(name, title, artist, album, albumArtist, genre, notes, tags, yearToMillis(year), number.toIntOrNull() ?: 0, disc.toIntOrNull() ?: 0)
     }
     AlertDialog(onDismissRequest = dismiss, title = { Text("Hazlo tuyo") }, text = {
         Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -161,6 +163,7 @@ private fun EditTrack(track: Track, dismiss: () -> Unit, save: (String, String, 
             OutlinedTextField(title, { title = it }, label = { Text("Título") })
             OutlinedTextField(artist, { artist = it }, label = { Text("Artista") })
             OutlinedTextField(album, { album = it }, label = { Text("Álbum") })
+            OutlinedTextField(albumArtist, { albumArtist = it }, label = { Text("Artista del álbum") })
             OutlinedTextField(genre, { genre = it }, label = { Text("Género") })
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(number, { number = it }, label = { Text("N° de pista") }, modifier = Modifier.weight(1f), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true)

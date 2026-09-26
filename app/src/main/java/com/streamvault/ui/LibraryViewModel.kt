@@ -184,13 +184,14 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
         notify("Eliminada de la biblioteca. El archivo original sigue intacto.")
     }
     fun edit(track: Track, name: String, title: String, artist: String, album: String, genre: String, notes: String, tags: String,
-             year: Long = -1, trackNumber: Int = -1, discNumber: Int = -1) = task {
+             year: Long = -1, trackNumber: Int = -1, discNumber: Int = -1, albumArtist: String = "") = task {
         val latest = dao.track(track.id) ?: return@task
         dao.update(latest.copy(customName = name.trim(), title = title.ifBlank { latest.title }, artist = artist.ifBlank { "Artista desconocido" },
             album = album.ifBlank { "Sin álbum" }, genre = genre.ifBlank { "Sin género" }, notes = notes, tags = tags,
             date = if (year >= 0) year else latest.date,
             trackNumber = if (trackNumber >= 0) trackNumber else latest.trackNumber,
-            discNumber = if (discNumber >= 0) discNumber else latest.discNumber))
+            discNumber = if (discNumber >= 0) discNumber else latest.discNumber,
+            albumArtist = albumArtist.trim()))
         notify("Información guardada sin modificar el archivo")
     }
     /** Ranked search: an exact artist + title always beats a partial coincidence. */

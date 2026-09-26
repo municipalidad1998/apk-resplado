@@ -9,6 +9,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -35,6 +39,7 @@ fun SettingsScreen(vm: LibraryViewModel, permission: () -> Unit, folder: () -> U
     val scans by vm.scan.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var choose by remember { mutableStateOf("") }
+    var numeric by remember { mutableStateOf("") }
     var exclusions by remember { mutableStateOf(false) }
     var excluded by remember(settings.excludedFolders) { mutableStateOf(settings.excludedFolders) }
     val update = vm.app.preferences::update
@@ -128,29 +133,52 @@ fun SettingsScreen(vm: LibraryViewModel, permission: () -> Unit, folder: () -> U
     }
     if (choose.isNotEmpty()) {
         val options: List<Pair<String, String>> = when (choose) {
-            "Crossfade" -> listOf(0, 2, 5, 10, 15, 20, 30, 60, 90, 120, 180).map { it.toString() to if (it == 0) "Desactivado" else "$it segundos" }
+            "Crossfade" -> listOf(0, 2, 4, 6, 8, 10).map { it.toString() to if (it == 0) "Desactivado" else "$it segundos" } + ("custom" to "Personalizado…")
             "Saltar ± segundos" -> listOf(5, 10, 15, 30).map { it.toString() to "$it segundos" }
             "Repetición" -> listOf("0" to "Desactivada", "1" to "Una canción", "2" to "Toda la cola")
             "Sensibilidad" -> listOf("-60" to "Alta · −60 dBFS", "-45" to "Equilibrada · −45 dBFS", "-30" to "Baja · −30 dBFS")
             "Silencio mínimo" -> listOf(0, 1, 2, 3, 5).map { it.toString() to "$it segundos" }
-            "Loudness objetivo" -> listOf(-20, -18, -16, -14, -12).map { it.toString() to "$it LUFS" }
+            "Loudness objetivo" -> listOf(-16, -14, -12).map { it.toString() to "$it LUFS" } + ("custom" to "Personalizado…")
             "Compresor" -> CompressorPreset.ALL.map { it.key to it.label }
             "Calidad online" -> Quality.values().map { it.key to it.label }
             else -> listOf("system" to "Automático según el sistema", "dark" to "Oscuro", "light" to "Claro")
         }
         AlertDialog(onDismissRequest = { choose = "" }, title = { Text(choose) }, text = {
             Column(Modifier.heightIn(max = 400.dp).verticalScroll(rememberScrollState())) { options.forEach { (key, label) -> TextButton(onClick = {
-                val reanalyze = choose == "Sensibilidad" || choose == "Silencio mínimo"
-                update { old -> when (choose) {
-                    "Crossfade" -> old.copy(crossfade = key.toInt()); "Saltar ± segundos" -> old.copy(skipSeconds = key.toInt())
-                    "Repetición" -> old.copy(repeat = key.toInt()); "Sensibilidad" -> old.copy(thresholdDb = key.toInt())
-                    "Silencio mínimo" -> old.copy(minimumSilence = key.toInt()); "Loudness objetivo" -> old.copy(targetLoudnessDb = key.toInt())
-                    "Compresor" -> old.copy(compressor = key); "Calidad online" -> old.copy(onlineQuality = key); else -> old.copy(theme = key)
-                } }
-                if (reanalyze && vm.settings.value.detectSilence) AnalysisWorker.enqueue(context)
-                choose = ""
+                if (key == "custom") numeric = choose // opens the manual value dialog
+                else {
+                    val reanalyze = choose == "Sensibilidad" || choose == "Silencio mínimo"
+                    update { old -> when (choose) {
+                        "Crossfade" -> old.copy(crossfade = key.toInt()); "Saltar ± segundos" -> old.copy(skipSeconds = key.toInt())
+                        "Repetición" -> old.copy(repeat = key.toInt()); "Sensibilidad" -> old.copy(thresholdDb = key.toInt())
+                        "Silencio mínimo" -> old.copy(minimumSilence = key.toInt()); "Loudness objetivo" -> old.copy(targetLoudnessDb = key.toInt())
+                        "Compresor" -> old.copy(compressor = key); "Calidad online" -> old.copy(onlineQuality = key); else -> old.copy(theme = key)
+                    } }
+                    if (reanalyze && vm.settings.value.detectSilence) AnalysisWorker.enqueue(context)
+                    choose = ""
+                }
             }, modifier = Modifier.fillMaxWidth()) { Text(label) } } }
         }, confirmButton = { TextButton(onClick = { choose = "" }) { Text("Cerrar") } })
+    }
+    if (numeric.isNotEmpty()) {
+        val isLoudness = numeric == "Loudness objetivo"
+        var value by remember(numeric) {
+            mutableStateOf((if (isLoudness) vm.settings.value.targetLoudnessDb else vm.settings.value.crossfade).toString())
+        }
+        AlertDialog(onDismissRequest = { numeric = "" }, title = { Text(if (isLoudness) "Loudness personalizado" else "Crossfade personalizado") }, text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(if (isLoudness) "Entre -24 y -6 LUFS. -14 LUFS es el valor habitual de streaming; más alto suena más fuerte."
+                    else "Entre 0 y 30 segundos. Se aplica un fundido de salida a la canción anterior y uno de entrada a la siguiente.",
+                    fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                OutlinedTextField(value, { value = it }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    label = { Text(if (isLoudness) "LUFS (negativo)" else "Segundos") })
+                Text(if (isLoudness) "Valor actual: ${vm.settings.value.targetLoudnessDb} LUFS" else "Valor actual: ${vm.settings.value.crossfade} s", fontSize = 11.sp)
+            }
+        }, confirmButton = { TextButton(onClick = {
+            if (isLoudness) update { it.copy(targetLoudnessDb = value.toIntOrNull()?.coerceIn(-24, -6) ?: it.targetLoudnessDb) }
+            else update { it.copy(crossfade = value.toIntOrNull()?.coerceIn(0, 30) ?: it.crossfade) }
+            numeric = ""; choose = ""
+        }) { Text("Guardar") } }, dismissButton = { TextButton(onClick = { numeric = "" }) { Text("Cancelar") } })
     }
     if (exclusions) AlertDialog(onDismissRequest = { exclusions = false }, title = { Text("Carpetas excluidas") }, text = {
         Column { Text("Un nombre o fragmento de ruta por línea. Los cambios se aplican en el próximo escaneo.")

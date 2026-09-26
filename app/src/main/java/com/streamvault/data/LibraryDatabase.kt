@@ -12,6 +12,7 @@ data class Track(
     val title: String,
     val artist: String = "Artista desconocido",
     val album: String = "Sin álbum",
+    val albumArtist: String = "",
     val genre: String = "Sin género",
     val folder: String = "",
     val durationMs: Long = 0,
@@ -151,22 +152,37 @@ abstract class LibraryDatabase : RoomDatabase() {
     companion object {
         val MIGRATION_1_2 = object : androidx.room.migration.Migration(1, 2) {
             override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
-                db.execSQL("ALTER TABLE tracks ADD COLUMN playbackEndMs INTEGER")
-                db.execSQL("ALTER TABLE tracks ADD COLUMN crossfadeSeconds INTEGER")
+                addColumn(db, "tracks", "playbackEndMs", "INTEGER")
+                addColumn(db, "tracks", "crossfadeSeconds", "INTEGER")
             }
         }
         val MIGRATION_2_3 = object : androidx.room.migration.Migration(2, 3) {
             override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
-                db.execSQL("ALTER TABLE tracks ADD COLUMN loudnessDb REAL")
+                addColumn(db, "tracks", "loudnessDb", "REAL")
             }
         }
         val MIGRATION_3_4 = object : androidx.room.migration.Migration(3, 4) {
             override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
-                db.execSQL("ALTER TABLE tracks ADD COLUMN peakDb REAL")
-                db.execSQL("ALTER TABLE tracks ADD COLUMN trackNumber INTEGER NOT NULL DEFAULT 0")
-                db.execSQL("ALTER TABLE tracks ADD COLUMN discNumber INTEGER NOT NULL DEFAULT 0")
+                addColumn(db, "tracks", "peakDb", "REAL")
+                addColumn(db, "tracks", "trackNumber", "INTEGER NOT NULL DEFAULT 0")
+                addColumn(db, "tracks", "discNumber", "INTEGER NOT NULL DEFAULT 0")
+                addColumn(db, "tracks", "albumArtist", "TEXT")
                 db.execSQL("CREATE TABLE IF NOT EXISTS telegram_files (messageId INTEGER NOT NULL PRIMARY KEY, fileId TEXT NOT NULL, name TEXT NOT NULL, artist TEXT NOT NULL, album TEXT NOT NULL, durationMs INTEGER NOT NULL, size INTEGER NOT NULL, hash TEXT NOT NULL, trackId TEXT, date INTEGER NOT NULL)")
             }
+        }
+
+        /**
+         * ALTER TABLE fails if the column is already there, which happens with databases that were
+         * touched by a previous build or by another tool. Checking first keeps the upgrade safe.
+         */
+        fun addColumn(db: androidx.sqlite.db.SupportSQLiteDatabase, table: String, column: String, definition: String) {
+            val present = db.query("PRAGMA table_info($table)").use { cursor ->
+                val names = mutableListOf<String>()
+                val index = cursor.getColumnIndex("name")
+                while (cursor.moveToNext()) names += cursor.getString(index)
+                names
+            }
+            if (column !in present) db.execSQL("ALTER TABLE $table ADD COLUMN $column $definition")
         }
     }
 }

@@ -112,6 +112,7 @@ class AudioScanner(private val app: LuminaApp, private val progress: suspend (In
                         title = metadata.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)?.takeIf { it.isNotBlank() } ?: track.title,
                         artist = clean(metadata.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST), track.artist),
                         album = clean(metadata.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM), track.album),
+                        albumArtist = clean(metadata.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST), ""),
                         genre = clean(metadata.extractMetadata(MediaMetadataRetriever.METADATA_KEY_GENRE), "Sin género"),
                         durationMs = metadata.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: duration,
                         trackNumber = metadata.extractMetadata(MediaMetadataRetriever.METADATA_KEY_CD_TRACK_NUMBER)?.substringBefore('/')?.toIntOrNull() ?: 0,
