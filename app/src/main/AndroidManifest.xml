@@ -58,6 +58,10 @@
             android:theme="@style/Theme.StreamVault.Player" />
 
         <activity
+            android:name=".ui.music.QueueActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".ui.web.WebHubActivity"
             android:exported="false"
             android:configChanges="orientation|screenSize|keyboardHidden" />

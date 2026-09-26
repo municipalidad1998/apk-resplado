@@ -28,6 +28,7 @@ import com.streamvault.R
 import com.streamvault.StreamVaultApp
 import com.streamvault.data.local.LocalMusicProvider
 import com.streamvault.data.local.LocalSong
+import com.streamvault.playback.PlaybackStateHolder
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -175,8 +176,94 @@ class LocalMusicActivity : AppCompatActivity() {
             findViewById<TextView>(R.id.tvEmptyMusic).text = "Sin resultados en tu biblioteca local."
         adapter = SongAdapter(list,
             onClick = { pos, songs -> openPlayer(songs, pos) },
-            onLongClick = { song -> showMetadataEditor(song) })
+            onLongClick = { song -> showMetadataEditor(song) },
+            onMenu = { song -> showSongMenu(song) })
         findViewById<RecyclerView>(R.id.rvSongs).adapter = adapter
+    }
+
+    /** Menú ⋮ de canción: reproducir, cola, playlist, favoritos, info… */
+    private fun showSongMenu(s: LocalSong) {
+        val options = arrayOf(
+            "▶ Reproducir ahora", "➕ Agregar a cola",
+            "🎶 Agregar a playlist", "❤️ Agregar a favoritos", "ℹ Información"
+        )
+        androidx.appcompat.app.AlertDialog.Builder(this).setTitle(s.title).setItems(options) { _, which ->
+            when (which) {
+                0 -> openPlayer(listOf(s), 0)
+                1 -> addToQueue(s)
+                2 -> addSongToPlaylist(s)
+                3 -> lifecycleScope.launch {
+                    StreamVaultApp.db.musicFavoritesDao().insert(
+                        com.streamvault.data.db.MusicFavoriteEntity(
+                            uri = s.contentUri, title = s.title, artist = s.artist,
+                            album = s.album, artUri = s.albumArtUri, duration = s.duration
+                        )
+                    )
+                    Toast.makeText(this@LocalMusicActivity, "❤️ Agregada a favoritos", Toast.LENGTH_SHORT).show()
+                }
+                4 -> {
+                    val sec = s.duration / 1000
+                    androidx.appcompat.app.AlertDialog.Builder(this)
+                        .setTitle("ℹ ${s.title}")
+                        .setMessage(
+                            "Artista: ${s.artist}\nÁlbum: ${s.album}\n" +
+                            (s.genre?.let { "Género: $it\n" } ?: "") +
+                            (s.year?.let { "Año: $it\n" } ?: "") +
+                            (s.track?.let { "Pista: $it\n" } ?: "") +
+                            "Duración: %d:%02d".format(sec / 60, sec % 60)
+                        )
+                        .setPositiveButton("Cerrar", null).show()
+                }
+            }
+        }.show()
+    }
+
+    private fun addToQueue(s: LocalSong) {
+        PlaybackStateHolder.queue = PlaybackStateHolder.queue + s
+        val token = androidx.media3.session.SessionToken(
+            this, android.content.ComponentName(this, com.streamvault.playback.MusicPlayerService::class.java)
+        )
+        val future = androidx.media3.session.MediaController.Builder(this, token).buildAsync()
+        future.addListener({
+            val c = future.get()
+            c.addMediaItem(
+                androidx.media3.common.MediaItem.Builder().setMediaId(s.contentUri)
+                    .setUri(s.contentUri)
+                    .setMediaMetadata(
+                        androidx.media3.common.MediaMetadata.Builder()
+                            .setTitle(s.title).setArtist(s.artist).setAlbumTitle(s.album).build()
+                    ).build()
+            )
+            androidx.media3.session.MediaController.releaseFuture(future)
+            Toast.makeText(this, "➕ Agregada a la cola", Toast.LENGTH_SHORT).show()
+        }, com.google.common.util.concurrent.MoreExecutors.directExecutor())
+    }
+
+    private fun addSongToPlaylist(s: LocalSong) {
+        val dao = StreamVaultApp.db.playlistDao()
+        lifecycleScope.launch {
+            dao.bySource("LOCAL").collectLatest { playlists ->
+                if (playlists.isEmpty()) {
+                    Toast.makeText(this@LocalMusicActivity, "Crea una playlist local primero", Toast.LENGTH_LONG).show()
+                    return@collectLatest
+                }
+                val names = playlists.map { it.name }.toTypedArray()
+                androidx.appcompat.app.AlertDialog.Builder(this@LocalMusicActivity)
+                    .setTitle("Agregar a…").setItems(names) { _, which ->
+                        lifecycleScope.launch {
+                            dao.insertTrack(
+                                com.streamvault.data.db.PlaylistTrackEntity(
+                                    playlistId = playlists[which].id, title = s.title,
+                                    artist = s.artist, uri = s.contentUri,
+                                    artUri = s.albumArtUri, duration = s.duration
+                                )
+                            )
+                            Toast.makeText(this@LocalMusicActivity, "Agregada a ${playlists[which].name}", Toast.LENGTH_SHORT).show()
+                        }
+                    }.setNegativeButton("Cancelar", null).show()
+                return@collectLatest
+            }
+        }
     }
 
     /** Edición de metadatos cuando el archivo los tiene incompletos. */
@@ -267,13 +354,15 @@ class LocalMusicActivity : AppCompatActivity() {
     class SongAdapter(
         val songs: List<LocalSong>,
         val onClick: (Int, List<LocalSong>) -> Unit,
-        val onLongClick: (LocalSong) -> Unit = {}
+        val onLongClick: (LocalSong) -> Unit = {},
+        val onMenu: (LocalSong) -> Unit = {}
     ) : RecyclerView.Adapter<SongAdapter.VH>() {
         class VH(v: View) : RecyclerView.ViewHolder(v) {
             val art: ImageView = v.findViewById(R.id.ivSongArt)
             val title: TextView = v.findViewById(R.id.tvSongTitle)
             val artist: TextView = v.findViewById(R.id.tvSongArtist)
             val duration: TextView = v.findViewById(R.id.tvSongDuration)
+            val menu: TextView = v.findViewById(R.id.tvSongMenu)
         }
 
         override fun onCreateViewHolder(p: ViewGroup, t: Int) =
@@ -290,11 +379,13 @@ class LocalMusicActivity : AppCompatActivity() {
             Glide.with(h.art).load(s.albumArtUri)
                 .placeholder(R.drawable.ic_channel)
                 .error(R.drawable.ic_channel).into(h.art)
+            h.menu.visibility = View.VISIBLE
             h.itemView.setOnClickListener { onClick(h.bindingAdapterPosition, songs) }
             h.itemView.setOnLongClickListener {
                 songs.getOrNull(h.bindingAdapterPosition)?.let(onLongClick)
                 true
             }
+            h.menu.setOnClickListener { songs.getOrNull(h.bindingAdapterPosition)?.let(onMenu) }
         }
     }
 

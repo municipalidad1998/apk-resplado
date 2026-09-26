@@ -134,6 +134,10 @@ class PlayerMusicActivity : AppCompatActivity() {
             )
         }
 
+        findViewById<View>(R.id.btnQueue).setOnClickListener {
+            startActivity(Intent(this, QueueActivity::class.java))
+        }
+
         findViewById<ImageButton>(R.id.btnNext).setOnClickListener { controller?.seekToNextMediaItem() }
         findViewById<ImageButton>(R.id.btnPrev).setOnClickListener { controller?.seekToPreviousMediaItem() }
         btnPlay.setOnClickListener {
