@@ -47,7 +47,8 @@ class PlaybackService : MediaSessionService() {
     private val preparedIds = mutableSetOf<String>()
     private val normalizer = LoudnessNormalizer()
     private val dynamics = DynamicsController()
-    private val connectivity = ConnectivityMonitor(this)
+    // Built lazily: the service Context does not exist yet while the constructor runs.
+    private val connectivity by lazy { ConnectivityMonitor(this) }
     private var offlineError = false
     private var attenuation = 1f
     private val attributes = AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build()
