@@ -27,7 +27,9 @@ data class PlayerSettings(
     val compressor: String = "balanced",
     val onlineQuality: String = "auto",
     val mobileData: Boolean = true,
-    val wifiOnly: Boolean = false
+    val wifiOnly: Boolean = false,
+    /** Optional: the user's own YouTube Data API v3 key. Without it YouTube is simply not searched. */
+    val youtubeApiKey: String = ""
 ) { val analysisKey get() = "rms-v3:$thresholdDb:$minimumSilence" }
 
 class Preferences(context: Context) {
@@ -50,7 +52,8 @@ class Preferences(context: Context) {
         compressor = prefs.getString("compressor", "balanced")!!,
         onlineQuality = prefs.getString("onlineQuality", "auto")!!,
         mobileData = prefs.getBoolean("mobileData", true),
-        wifiOnly = prefs.getBoolean("wifiOnly", false)
+        wifiOnly = prefs.getBoolean("wifiOnly", false),
+        youtubeApiKey = prefs.getString("youtubeApiKey", "")!!
     )
     fun update(change: (PlayerSettings) -> PlayerSettings) {
         val s = change(mutable.value)
@@ -62,7 +65,8 @@ class Preferences(context: Context) {
             .putBoolean("autoUpdate", s.autoUpdate).putBoolean("dynamicColor", s.dynamicColor)
             .putBoolean("normalize", s.normalize).putInt("targetLoudness", s.targetLoudnessDb)
             .putString("compressor", s.compressor).putString("onlineQuality", s.onlineQuality)
-            .putBoolean("mobileData", s.mobileData).putBoolean("wifiOnly", s.wifiOnly).apply()
+            .putBoolean("mobileData", s.mobileData).putBoolean("wifiOnly", s.wifiOnly)
+            .putString("youtubeApiKey", s.youtubeApiKey).apply()
         mutable.value = s
     }
     fun roots(): Set<String> = prefs.getStringSet("roots", emptySet())!!.toSet()

@@ -1,5 +1,6 @@
 # Reproductor de música Denilson
 
+**Versión 2.8.0:** [YouTube dentro de la app con la API oficial y el reproductor oficial (y por qué no hay bloqueador de anuncios)](docs/YOUTUBE_Y_LIMITES.md).
 **Versión 2.7.0:** [motor de búsqueda propio con relevancia real, bibliotecas local y online separadas y playlists por tipo](docs/ANALISIS_REFERENCIA_Y_BUSQUEDA.md).
 **Versión 2.6.0:** [buscador inteligente con prioridad exacta, loudness BS.1770 con límite de pico, FLAC con datos reales y música de Telegram](docs/BUSQUEDA_LOUDNESS_Y_METADATOS.md).
 **Versión 2.5.0:** [música online con proveedor intercambiable, calidad según la conexión y FLAC](docs/MUSICA_ONLINE_Y_FLAC.md).
@@ -13,18 +14,23 @@ favoritos, playlists y notificación.
 No es una web empaquetada y no inserta anuncios propios. Al abrirlo por primera vez, la biblioteca
 local estará vacía hasta que autorices el acceso a tu música o elijas una carpeta.
 
-## APK verificado — Reproductor de música Denilson 2.7.0
+## APK verificado — Reproductor de música Denilson 2.8.0
 
-**[Descargar el APK](https://github.com/municipalidad1998/apk-resplado/releases/download/v2.7.0/reproductor-denilson-2.7.0.apk)** · [Página del release](https://github.com/municipalidad1998/apk-resplado/releases/tag/v2.7.0)
+**[Descargar el APK](https://github.com/municipalidad1998/apk-resplado/releases/download/v2.8.0/reproductor-denilson-2.8.0.apk)** · [Página del release](https://github.com/municipalidad1998/apk-resplado/releases/tag/v2.8.0)
 
 Se instala **encima** de la versión anterior sin desinstalar: mismo paquete (`com.streamvault`),
 misma clave de firma y `versionCode` mayor. La app lo detecta en **Ajustes → Actualizaciones**.
 Detalles en [docs/FIRMA_Y_ACTUALIZACIONES.md](docs/FIRMA_Y_ACTUALIZACIONES.md).
 
-### Límites reales de la versión 2.7.0
+### Límites reales de la versión 2.8.0
 
 - **La música online es de catálogo libre** (Internet Archive). No es el catálogo comercial: los éxitos de las grandes discográficas sólo se pueden escuchar en el reproductor oficial de YouTube o pagando licencias.
-- **YouTube:** el botón abre la búsqueda en la **app oficial**. No bloquea anuncios ni reproduce YouTube en segundo plano: eso depende de YouTube Premium y sus términos.
+- **YouTube:** busca con la **API oficial de YouTube Data API v3** y reproduce el vídeo **dentro de la app**
+  con el reproductor oficial de YouTube (sin abrir otra ventana). **No bloquea anuncios** ni reproduce en
+  segundo plano: ambas cosas son de YouTube Premium y saltárselas incumple sus términos. Necesitas tu
+  propia clave de API (Ajustes → YouTube); sin clave, YouTube simplemente no se busca.
+- **YouTube Music:** no tiene API pública, así que ese botón abre la app oficial. Los clientes que
+  circulan (InnerTube, ytmusicapi) se hacen pasar por la app oficial y no se usan.
 - **Telegram:** la importación guarda todos los metadatos; transmitir desde sus servidores necesita un cliente MTProto con tus credenciales de API.
 - **FLAC:** la profundidad de bits se calcula desde el bitrate cuando el contenedor no la expone.
 - **Separación de voz:** sigue sin modelo instalado; la opción lo indica en lugar de simular un resultado.

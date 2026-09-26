@@ -11,13 +11,19 @@ import java.security.MessageDigest
  */
 class OnlineRepository(private val app: LuminaApp) {
 
-    val providers: List<OnlineProvider> = listOf(ArchiveProvider())
+    val providers: List<OnlineProvider> = listOf(ArchiveProvider(), YouTubeProvider { app.preferences.state.value.youtubeApiKey })
 
+    /** Every configured provider answers; each result keeps the name of the source it came from. */
     suspend fun search(query: String, limit: Int = 40): List<OnlineResult> {
         val clean = query.trim()
         if (clean.length < 2) return emptyList()
-        return providers.firstOrNull { it.canStream }?.search(clean, limit).orEmpty()
+        return providers.filter { it.configured }.mapNotNull { provider ->
+            runCatching { provider.search(clean, limit) }.getOrDefault(emptyList()).takeIf { it.isNotEmpty() }
+        }.flatten()
     }
+
+    /** Why a provider is silent, so the screen can say "falta la clave" instead of "no hay nada". */
+    fun pendingSetup(): List<String> = providers.filter { !it.configured }.mapNotNull { it.hint }
 
     /** Name of the provider that served a result, so the row can say where it comes from. */
     fun labelOf(key: String): String = providers.firstOrNull { it.key == key }?.label ?: "Internet"
@@ -29,6 +35,7 @@ class OnlineRepository(private val app: LuminaApp) {
     suspend fun track(result: OnlineResult, quality: Quality, net: NetState): Track {
         val wifiOnly = app.preferences.state.value.wifiOnly
         val mobileData = app.preferences.state.value.mobileData
+        if (result.streams.isEmpty()) error("Esta canción se reproduce con el reproductor oficial de ${labelOf(result.source)}")
         val stream = QualityChooser.choose(result.streams, quality, net, wifiOnly, mobileData)
             ?: error(if (!net.online) "Sin conexión: conéctate a Internet para escuchar música online."
             else if (wifiOnly && net.metered) "Tienes activado «Solo Wi‑Fi» y ahora usas datos móviles."

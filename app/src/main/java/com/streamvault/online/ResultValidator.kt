@@ -21,7 +21,9 @@ object ResultValidator {
         val title = result.title.trim().replace(Regex("\\s+"), " ")
         if (title.length < 2) return@mapNotNull null
         val streams = result.streams.filter { it.url.isNotBlank() && it.url.startsWith("http") }
-        if (streams.isEmpty()) return@mapNotNull null
+        val embed = result.embedUrl?.takeIf { it.startsWith("https://") }
+        // Either a stream we can decode, or the official embed player. Never a bare link.
+        if (streams.isEmpty() && embed == null) return@mapNotNull null
         val id = result.id.ifBlank { streams.first().url }
         val duration = if (result.durationSeconds.isFinite() && result.durationSeconds > 0f) result.durationSeconds
             else streams.firstOrNull { it.durationSeconds > 0f }?.durationSeconds ?: 0f
@@ -32,7 +34,8 @@ object ResultValidator {
             album = result.album.trim().ifBlank { UNKNOWN_ALBUM },
             durationSeconds = duration,
             streams = streams,
-            source = result.source.ifBlank { "online" }
+            source = result.source.ifBlank { "online" },
+            embedUrl = embed
         )
     }.distinctBy { it.id }
 }

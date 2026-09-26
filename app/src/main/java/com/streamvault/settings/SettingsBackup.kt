@@ -38,7 +38,8 @@ object SettingsBackup {
         Triple("compressor", "compressor", Kind.STRING),
         Triple("onlineQuality", "onlineQuality", Kind.STRING),
         Triple("mobileData", "mobileData", Kind.BOOL),
-        Triple("wifiOnly", "wifiOnly", Kind.BOOL)
+        Triple("wifiOnly", "wifiOnly", Kind.BOOL),
+        Triple("youtubeApiKey", "youtubeApiKey", Kind.STRING)
     )
 
     fun fieldNames(): List<String> = FIELDS.map { it.first }
@@ -68,6 +69,7 @@ object SettingsBackup {
         put("onlineQuality", settings.onlineQuality)
         put("mobileData", settings.mobileData)
         put("wifiOnly", settings.wifiOnly)
+        put("youtubeApiKey", settings.youtubeApiKey)
     }.toString()
 
     fun isBackup(text: String): Boolean = runCatching {

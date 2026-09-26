@@ -121,6 +121,21 @@ fun SettingsScreen(vm: LibraryViewModel, permission: () -> Unit, folder: () -> U
             Text("Automática elige FLAC o la mejor calidad con Wi‑Fi, una calidad media con datos móviles y la más baja en conexiones lentas. "
                 + "Tus archivos FLAC locales se reproducen tal cual, sin convertirlos, incluso sin Internet.",
                 fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 6.dp))
+            SectionTitle("YouTube")
+            var key by remember { mutableStateOf(settings.youtubeApiKey) }
+            LaunchedEffect(settings.youtubeApiKey) { key = settings.youtubeApiKey }
+            OutlinedTextField(key, { key = it }, modifier = Modifier.fillMaxWidth(), singleLine = true,
+                label = { Text("Clave de YouTube Data API v3 (opcional)") },
+                placeholder = { Text("AIza…") },
+                trailingIcon = { if (key.isNotEmpty()) ActionIcon(Icons.Rounded.Close, "Borrar", { key = ""; update { it.copy(youtubeApiKey = "") } }) })
+            Button(onClick = { update { it.copy(youtubeApiKey = key.trim()) }; vm.notify(if (key.isBlank()) "YouTube desactivado: no se buscará en YouTube." else "Clave guardada. Ya puedes buscar música de YouTube.") },
+                modifier = Modifier.padding(vertical = 8.dp)) { Text("Guardar clave") }
+            Text("Con tu clave, la app busca en YouTube con la API oficial y reproduce el vídeo dentro de la app "
+                + "con el reproductor oficial de YouTube: no se abre otra ventana. Los anuncios los pone YouTube y "
+                + "no se bloquean, y la reproducción se pausa al salir: para escuchar sin anuncios y con la pantalla "
+                + "apagada existe YouTube Premium. Sin clave, YouTube simplemente no se busca y el resto sigue igual.",
+                fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 17.sp, modifier = Modifier.padding(bottom = 8.dp))
+
             SectionTitle("Respaldo")
             Setting("Guardar mis ajustes", "Exporta la configuración a un archivo que puedes conservar", { backup.launch("ajustes-reproductor-denilson.json") })
             Setting("Restaurar mis ajustes", "Recupera la configuración desde un respaldo anterior", { restore.launch(arrayOf("application/json", "text/*")) })

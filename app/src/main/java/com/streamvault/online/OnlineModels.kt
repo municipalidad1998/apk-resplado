@@ -42,9 +42,16 @@ data class OnlineResult(
     val durationSeconds: Float,
     val streams: List<OnlineStream>,
     val source: String,
-    val license: String = ""
+    val license: String = "",
+    /**
+     * Set when the song can only be played by its own official player (YouTube). There is no
+     * audio URL to extract: taking one would break the terms of the service.
+     */
+    val embedUrl: String? = null
 ) {
     val bestStream: OnlineStream? get() = streams.maxByOrNull { it.format.rank * 10000 + it.bitrateKbps }
+    /** A stream we can feed to ExoPlayer, or an official embed we can show inside the app. */
+    val playable: Boolean get() = streams.isNotEmpty() || !embedUrl.isNullOrBlank()
 }
 
 /**
@@ -56,6 +63,10 @@ interface OnlineProvider {
     val label: String
     /** Streams audio itself. False for sources that may only hand the user over to their app. */
     val canStream: Boolean
+    /** Providers that need credentials (an API key) report it, so the UI can explain it. */
+    val configured: Boolean get() = true
+    /** What the user has to do to enable this provider, or null when it is ready. */
+    val hint: String? get() = null
     suspend fun search(query: String, limit: Int = 40): List<OnlineResult>
 }
 

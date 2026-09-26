@@ -31,6 +31,7 @@ fun LuminaAppUI(vm: LibraryViewModel, requestPermission: () -> Unit, chooseFolde
     var page by rememberSaveable { mutableIntStateOf(0) }
     var fullPlayer by rememberSaveable { mutableStateOf(false) }
     var menuTrack by remember { mutableStateOf<Track?>(null) }
+    val video by vm.youtubeVideo.collectAsStateWithLifecycle()
     LaunchedEffect(message, fullPlayer, menuTrack) { if (!fullPlayer && menuTrack == null) message?.let { snackbar.showSnackbar(it); vm.message.value = null } }
     // An automatic check never interrupts playback: it only tells you the new version exists.
     LaunchedEffect(update) { if (update is UpdateState.Available && !fullPlayer && menuTrack == null) snackbar.showSnackbar("Nueva versión ${(update as UpdateState.Available).info.version}: abre Ajustes → Actualizaciones") }
@@ -70,6 +71,7 @@ fun LuminaAppUI(vm: LibraryViewModel, requestPermission: () -> Unit, chooseFolde
                     }
                 }
                 if (fullPlayer && current != null) FullPlayer(vm, current!!, playback, { fullPlayer = false }, { menuTrack = it }, { library(); fullPlayer = false })
+                video?.let { result -> YouTubePlayerScreen(result, vm::closeYouTube) }
                 menuTrack?.let { track -> TrackActions(vm, track, { menuTrack = null }) }
                 UpdateDialog(vm)
                 if (message != null && (fullPlayer || menuTrack != null)) AlertDialog(

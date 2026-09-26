@@ -44,6 +44,7 @@ fun SearchScreen(vm: LibraryViewModel, menu: (Track) -> Unit) {
     val current by vm.current.collectAsStateWithLifecycle()
     val net by vm.net.collectAsStateWithLifecycle()
     val settings by vm.settings.collectAsStateWithLifecycle()
+    val hints by vm.providerHints.collectAsStateWithLifecycle()
     var text by remember { mutableStateOf(vm.searchQuery.value) }
     val suggestions = listOf("Alex Campos", "La IBI", "Tu poeta Alex Campos", "Al taller del maestro", "música cristiana", "instrumental piano", "alabanza", "salsa en vivo")
 
@@ -92,6 +93,9 @@ fun SearchScreen(vm: LibraryViewModel, menu: (Track) -> Unit) {
             }
         }
         if (searching) LinearProgressIndicator(Modifier.fillMaxWidth())
+        if (hints.isNotEmpty() && outcome.query.trim().length >= 2) {
+            Text(hints.first(), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 6.dp))
+        }
 
         picker?.let { hit -> PlaylistChooser(vm, hit) { picker = null } }
         when {
@@ -237,8 +241,13 @@ fun OnlineRow(vm: LibraryViewModel, hit: SearchHit, choosePlaylist: (SearchHit) 
         }
         SourceBadge(MusicSource.ONLINE, hit.origin)
         hit.online?.let { online ->
-            ActionIcon(Icons.Rounded.PlaylistAdd, "Agregar a playlist", { choosePlaylist(hit) })
-            ActionIcon(Icons.Rounded.QueueMusic, "Agregar a la cola", { vm.enqueueOnline(online) })
+            // YouTube results carry their own official player; the others go to our own queue.
+            if (online.streams.isEmpty() && online.embedUrl != null) {
+                ActionIcon(Icons.Rounded.PlayCircle, "Reproducir con el reproductor oficial", { vm.playOnline(hit) })
+            } else {
+                ActionIcon(Icons.Rounded.PlaylistAdd, "Agregar a playlist", { choosePlaylist(hit) })
+                ActionIcon(Icons.Rounded.QueueMusic, "Agregar a la cola", { vm.enqueueOnline(online) })
+            }
         }
     }
 }

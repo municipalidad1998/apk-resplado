@@ -85,6 +85,10 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
     val searchTab = MutableStateFlow(SearchTab.PHONE)
     val outcome = MutableStateFlow(SearchOutcome())
     val searching = MutableStateFlow(false)
+    /** Set when the user plays a song that only its own official player can reproduce (YouTube). */
+    val youtubeVideo = MutableStateFlow<OnlineResult?>(null)
+    /** Why a provider is silent, so the screen can explain it instead of showing nothing. */
+    val providerHints = MutableStateFlow<List<String>>(emptyList())
     val engine = MusicSearchEngine(LocalMusicProvider(app), OnlineMusicProvider(online) { net.value })
     val roots = MutableStateFlow(app.preferences.roots().toList())
     val playback = MutableStateFlow(PlaybackState())
@@ -222,6 +226,7 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             searching.value = true
             outcome.value = engine.search(text).copy(searching = true)
+            providerHints.value = online.pendingSetup()
             searching.value = false
             outcome.value = outcome.value.copy(searching = false)
         }
@@ -232,6 +237,10 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
         val result = hit.online ?: error("Este resultado ya no está disponible")
         playOnline(result, outcome.value.online)
     }
+
+    /** The local player steps aside while the official YouTube player is on screen. */
+    fun pauseForVideo() { controller?.pause() }
+    fun closeYouTube() { youtubeVideo.value = null }
 
     /** Adds an online song to a playlist without downloading it or touching the phone library. */
     fun addOnlineTo(hit: SearchHit, playlist: Playlist) = task {
@@ -259,6 +268,8 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
 
     /** The whole result page becomes the queue, so next and previous keep working online. */
     fun playOnline(result: OnlineResult, contextHits: List<SearchHit> = outcome.value.online) = task {
+        // YouTube has no stream to extract: show its own official player inside the app instead.
+        if (result.streams.isEmpty() && result.embedUrl != null) { pauseForVideo(); youtubeVideo.value = result; return@task }
         val quality = wantedQuality()
         val context = contextHits.take(30).mapNotNull { item -> item.online?.let { runCatching { online.track(it, quality, net.value) }.getOrNull() } }
         val track = online.track(result, quality, net.value)
