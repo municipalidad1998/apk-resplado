@@ -44,13 +44,14 @@ fun PlaylistsScreen(vm: LibraryViewModel, menu: (Track) -> Unit, library: () -> 
             if (selected != null) TextButton(onClick = { selectedId = null }) { Icon(Icons.Rounded.ArrowBack, null); Text(" Playlists") }
             PageHeader("EL SONIDO DE TUS MOMENTOS", selected?.name ?: "Tus playlists", selected?.description ?: "Colecciones con tu propia personalidad.")
             if (selected == null) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Button and filters on one line: the first playlist has to stay on screen.
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Button(onClick = { create = true }) { Icon(Icons.Rounded.Add, null); Text(" Crear playlist") }
-                }
-                // Local, online and mixed are three different things: never merged into one list.
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 8.dp)) {
-                    items(listOf("" to "Todas", Playlist.KIND_LOCAL to "Locales", Playlist.KIND_ONLINE to "Online", Playlist.KIND_MIXED to "Mixtas")) { (value, label) ->
-                        FilterChip(selected = kind == value, onClick = { kind = value }, label = { Text(label) })
+                    // Local, online and mixed are three different things: never merged into one list.
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f).padding(start = 8.dp)) {
+                        items(listOf("" to "Todas", Playlist.KIND_LOCAL to "Locales", Playlist.KIND_ONLINE to "Online", Playlist.KIND_MIXED to "Mixtas")) { (value, label) ->
+                            FilterChip(selected = kind == value, onClick = { kind = value }, label = { Text(label, fontSize = 11.sp) })
+                        }
                     }
                 }
             }

@@ -37,7 +37,7 @@ class NavigationTests {
         compose.onNodeWithText("Descripción").performTextInput("Creada en prueba instrumentada")
         compose.onNodeWithText("Guardar").performClick()
         compose.waitUntil(15000) { compose.onAllNodesWithText("Lista de prueba de navegación").fetchSemanticsNodes().isNotEmpty() }
-        compose.onNodeWithText("Lista de prueba de navegación").performClick()
+        compose.onNodeWithText("Lista de prueba de navegación").performScrollTo().performClick()
         // The detail view replaces the list: wait for its own actions before asserting on it.
         val opened = runCatching {
             compose.waitUntil(15000) { compose.onAllNodesWithContentDescription("Eliminar playlist").fetchSemanticsNodes().isNotEmpty() }
@@ -50,7 +50,7 @@ class NavigationTests {
             val chips = compose.onAllNodesWithText("Locales").fetchSemanticsNodes().size
             assertTrue("No se abrió la playlist (atras=$back escuchar=$play filas=$rows chips=$chips)", false)
         }
-        compose.onNodeWithContentDescription("Eliminar playlist").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Eliminar playlist").performScrollTo().assertIsDisplayed()
         compose.onNodeWithContentDescription("Eliminar playlist").performClick()
         compose.onNodeWithText("Eliminar").performClick()
         compose.onNodeWithText("Tus playlists").assertIsDisplayed()
