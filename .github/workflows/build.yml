@@ -175,13 +175,24 @@ jobs:
             - Buscador inteligente: la coincidencia exacta de artista y título va primero y ningún
               resultado aleatorio se cuela por encima. Acepta acentos, mayúsculas, alias y errores
               de escritura. Busca primero en tu teléfono y después en Internet.
-            - Normalización de loudness real con BS.1770 (curva K, bloques de 400 ms y doble
-              compuerta), objetivo configurable de -20 a -8 LUFS y pico verdadero en dBTP: la
-              ganancia se limita a -1 dBTP para no distorsionar, sin tocar el archivo.
-            - FLAC y WAV sin convertir, con bit depth, sample rate, códec y bitrate reales.
-            - Editor de metadatos completo: título, artista, álbum, género, año, pista y disco.
+            - Normalización de loudness real con BS.1770 (curva K, bloques de 400 ms, doble
+              compuerta y pico verdadero de 4x). Objetivo -16, -14, -12 LUFS o personalizado
+              entre -24 y -6; la ganancia se limita a -1 dBTP para no distorsionar. No toca el
+              archivo: el reproductor muestra loudness medido, pico y ganancia aplicada.
+            - Crossfade desactivado o de 2, 4, 6, 8, 10 segundos, y ahora también personalizado
+              de 0 a 30 segundos.
+            - Detección local con metadatos completos: título, artista, álbum, artista del álbum,
+              género, año, pista, disco y carátula. Si algo falta, edítalo a mano desde la
+              canción. Los resultados de búsqueda llevan artista, título, álbum, duración,
+              carátula y origen.
             - Música de Telegram: importa el respaldo exportado por Telegram y guarda su id de
-              mensaje, nombre, artista, duración y tamaño en SQLite.
+              mensaje, id de archivo, nombre, artista, álbum, duración, tamaño y hash en SQLite,
+              vinculándolo con tu copia local cuando existe.
+
+            Limitación honesta sobre Telegram: la app registra y organiza esos archivos, pero
+            todavía no reproduce directamente desde los servidores de Telegram; para eso haría
+            falta un cliente MTProto con tus propias credenciales de API. Si borras el archivo
+            del PC, la entrada queda en el registro pero no sonará hasta que vuelvas a tenerlo.
 
             YouTube: el botón abre la búsqueda en la app oficial de YouTube. La app no bloquea
             anuncios ni reproduce YouTube en segundo plano; eso depende de YouTube Premium.
