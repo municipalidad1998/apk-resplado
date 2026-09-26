@@ -51,10 +51,11 @@ class ArchiveProvider : OnlineProvider {
             if (identifier.isBlank()) continue
             list += ArchiveItem(
                 identifier = identifier,
-                title = doc.optString("title").ifBlank { identifier },
-                creator = firstCreator(doc.opt("creator")),
-                year = doc.optString("year"),
-                subject = firstCreator(doc.opt("subject")),
+                // Metadata fields arrive either as a string or as an array of strings.
+                title = firstValue(doc.opt("title")).ifBlank { identifier },
+                creator = firstValue(doc.opt("creator")),
+                year = firstValue(doc.opt("year")),
+                subject = firstValue(doc.opt("subject")),
                 downloads = runCatching { doc.optInt("downloads") }.getOrDefault(0)
             )
         }
@@ -111,11 +112,11 @@ class ArchiveProvider : OnlineProvider {
         return when {
             lower.endsWith(".flac") || format.contains("flac", true) -> StreamFormat.FLAC
             lower.endsWith(".wav") || format.contains("wave", true) -> StreamFormat.WAV
-            lower.endsWith(".m4a") || lower.endsWith(".alac") || format.contains("alac", true) -> StreamFormat.ALAC
+            lower.endsWith(".alac") || format.contains("alac", true) -> StreamFormat.ALAC
             lower.endsWith(".ogg") || lower.endsWith(".oga") || format.contains("vorbis", true) || format.contains("ogg", true) -> StreamFormat.OGG
             lower.endsWith(".opus") -> StreamFormat.OGG
             lower.endsWith(".mp3") || format.contains("mp3", true) -> StreamFormat.MP3
-            lower.endsWith(".aac") || lower.endsWith(".mp4") || lower.endsWith(".m4b") -> StreamFormat.AAC
+            lower.endsWith(".aac") || lower.endsWith(".mp4") || lower.endsWith(".m4a") || lower.endsWith(".m4b") -> StreamFormat.AAC
             else -> null
         }
     }
@@ -129,9 +130,10 @@ class ArchiveProvider : OnlineProvider {
     internal fun prettyTitle(name: String): String = name.substringAfterLast('/').substringBeforeLast('.')
         .replace('_', ' ').replace(Regex("\\s+"), " ").trim().ifBlank { name }
 
-    private fun firstCreator(value: Any?): String = when (value) {
+    private fun firstValue(value: Any?): String = when (value) {
         is String -> value
-        is org.json.JSONArray -> (0 until value.length()).mapNotNull { value.optString(it) }.firstOrNull().orEmpty()
+        is org.json.JSONArray -> (0 until value.length()).mapNotNull { runCatching { value.getString(it) }.getOrNull() ?: value.optString(it) }.firstOrNull().orEmpty()
+        is Number -> value.toString()
         else -> ""
     }
 
