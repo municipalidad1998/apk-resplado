@@ -22,4 +22,16 @@ data class LocalSong(
     val contentUri: String,
     val albumArtUri: String? = null,
     val path: String? = null
-) : Parcelable
+) : Parcelable {
+
+    /** Etiqueta de calidad, p. ej. "FLAC • LOSSLESS" según la extensión. */
+    val codecLabel: String
+        get() = when (path?.substringAfterLast('.', "")?.lowercase()) {
+            "flac" -> "FLAC • LOSSLESS"
+            "wav" -> "WAV • SIN COMPRESIÓN"
+            "opus" -> "OPUS"
+            "ogg" -> "OGG"
+            "m4a", "aac" -> "AAC"
+            else -> ""
+        }
+}

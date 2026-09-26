@@ -28,7 +28,9 @@ class LocalMusicProvider(private val context: Context) {
             MediaStore.Audio.Media.DURATION,
             MediaStore.Audio.Media.YEAR,
             MediaStore.Audio.Media.TRACK,
-            MediaStore.Audio.Media.DATA
+            MediaStore.Audio.Media.DATA,
+            if (android.os.Build.VERSION.SDK_INT < 30) MediaStore.Audio.AudioColumns.GENRE
+            else MediaStore.Audio.Media._ID // GENRE no disponible en API 30+: se usa _ID como relleno
         )
         val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0 AND ${MediaStore.Audio.Media.DURATION} > 0"
         val sortOrder = "${MediaStore.Audio.Media.ARTIST} ASC, ${MediaStore.Audio.Media.ALBUM} ASC, ${MediaStore.Audio.Media.TRACK} ASC"
@@ -43,6 +45,8 @@ class LocalMusicProvider(private val context: Context) {
             val yearCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.YEAR)
             val trackCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.TRACK)
             val dataCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
+            val genreCol = if (android.os.Build.VERSION.SDK_INT < 30)
+                c.getColumnIndex(MediaStore.Audio.AudioColumns.GENRE) else -1
 
             while (c.moveToNext()) {
                 val path = c.getString(dataCol) ?: continue
@@ -62,6 +66,7 @@ class LocalMusicProvider(private val context: Context) {
                         id = id,
                         title = c.getString(titleCol) ?: "Desconocido",
                         artist = c.getString(artistCol)?.takeIf { it != "<unknown>" } ?: "Artista desconocido",
+                        genre = if (genreCol >= 0) c.getString(genreCol)?.takeIf { it.isNotBlank() } else null,
                         album = c.getString(albumCol) ?: "Álbum desconocido",
                         duration = c.getLong(durCol),
                         year = c.getInt(yearCol).takeIf { it > 0 },

@@ -15,6 +15,7 @@ import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -73,6 +74,7 @@ class LocalMusicActivity : AppCompatActivity() {
             MODE_MUSIC -> {
                 findViewById<TextView>(R.id.tvMusicTitle).text = "📱 Música del teléfono"
                 setupSearch()
+                setupOrganizer()
                 checkPermissionAndLoad()
             }
             MODE_VIDEOS -> {
@@ -127,6 +129,48 @@ class LocalMusicActivity : AppCompatActivity() {
     }
 
     // ---------------- Música local ----------------
+
+    /** Organización: Canciones / Álbumes / Artistas / Géneros / Carpetas. */
+    private fun setupOrganizer() {
+        val sp = findViewById<Spinner>(R.id.spOrganize)
+        sp.visibility = View.VISIBLE
+        val modes = listOf("🎵 Canciones", "💿 Álbumes", "🎤 Artistas", "🏷 Géneros", "📁 Carpetas")
+        sp.adapter = android.widget.ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, modes)
+        sp.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(p: android.widget.AdapterView<*>?, v: View?, pos: Int, id: Long) {
+                if (allSongs.isNotEmpty()) applyOrganization(pos)
+            }
+            override fun onNothingSelected(p: android.widget.AdapterView<*>?) {}
+        }
+    }
+
+    private fun applyOrganization(pos: Int) {
+        val query = findViewById<EditText>(R.id.etSearchMusic).text.toString()
+        val base = if (query.isBlank()) allSongs else LocalMusicProvider.search(allSongs, query)
+        when (pos) {
+            0 -> showSongs(base) // canciones
+            1 -> showGroups(base.groupBy { it.album }, "💿")
+            2 -> showGroups(base.groupBy { it.artist }, "🎤")
+            3 -> showGroups(base.groupBy { it.genre ?: "Sin género" }, "🏷")
+            4 -> showGroups(base.groupBy { it.path?.substringBeforeLast('/') ?: "Desconocida" }, "📁")
+        }
+    }
+
+    private fun showGroups(
+        grouped: Map<String, List<LocalSong>>,
+        icon: String
+    ) {
+        val groups = grouped.toSortedMap(String.CASE_INSENSITIVE_ORDER)
+        val items = groups.map { (name, songs) ->
+            SimpleItem("$icon $name (${songs.size})", android.net.Uri.EMPTY, null, songs)
+        }
+        findViewById<TextView>(R.id.tvEmptyMusic).visibility =
+            if (items.isEmpty()) View.VISIBLE else View.GONE
+        findViewById<RecyclerView>(R.id.rvSongs).adapter = SimpleAdapter(items) { item ->
+            val songs = item.groupSongs ?: return@SimpleAdapter
+            showSongs(songs) // tocar un álbum/artista/género/carpeta muestra sus canciones
+        }
+    }
 
     private fun setupSearch() {
         findViewById<EditText>(R.id.etSearchMusic).addTextChangedListener(object : TextWatcher {
@@ -202,7 +246,21 @@ class LocalMusicActivity : AppCompatActivity() {
                     Toast.makeText(this@LocalMusicActivity, "❤️ Agregada a favoritos", Toast.LENGTH_SHORT).show()
                 }
                 4 -> {
+                    // Detalles de audio (bit depth / sample rate / bitrate / codec)
+                    var sampleRate = ""; var bitrate = ""
+                    try {
+                        val mmr = android.media.MediaMetadataRetriever()
+                        mmr.setDataSource(this, Uri.parse(s.contentUri))
+                        if (android.os.Build.VERSION.SDK_INT >= 31) {
+                            mmr.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_SAMPLERATE)
+                                ?.let { sampleRate = "${it.toInt() / 1000} kHz" }
+                        }
+                        mmr.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_BITRATE)
+                            ?.let { bitrate = "${it.toInt() / 1000} kbps" }
+                        mmr.release()
+                    } catch (e: Exception) { }
                     val sec = s.duration / 1000
+                    val quality = s.codecLabel
                     androidx.appcompat.app.AlertDialog.Builder(this)
                         .setTitle("ℹ ${s.title}")
                         .setMessage(
@@ -210,7 +268,10 @@ class LocalMusicActivity : AppCompatActivity() {
                             (s.genre?.let { "Género: $it\n" } ?: "") +
                             (s.year?.let { "Año: $it\n" } ?: "") +
                             (s.track?.let { "Pista: $it\n" } ?: "") +
-                            "Duración: %d:%02d".format(sec / 60, sec % 60)
+                            "Duración: %d:%02d".format(sec / 60, sec % 60) + "\n" +
+                            if (quality.isNotEmpty()) "Calidad: $quality\n" else "" +
+                            if (sampleRate.isNotEmpty()) "Sample rate: $sampleRate\n" else "" +
+                            if (bitrate.isNotEmpty()) "Bitrate: $bitrate" else ""
                         )
                         .setPositiveButton("Cerrar", null).show()
                 }
@@ -308,7 +369,10 @@ class LocalMusicActivity : AppCompatActivity() {
 
     // ---------------- Videos / Fotos / Documentos ----------------
 
-    data class SimpleItem(val name: String, val uri: Uri, val mime: String?)
+    data class SimpleItem(
+        val name: String, val uri: Uri, val mime: String?,
+        val groupSongs: List<LocalSong>? = null
+    )
 
     private fun loadSimpleMedia(collection: Uri, mimeFallback: String?) {
         showEmpty("Escaneando…")
@@ -375,7 +439,10 @@ class LocalMusicActivity : AppCompatActivity() {
             h.title.text = s.title
             h.artist.text = "${s.artist} · ${s.album}"
             val totalSec = s.duration / 1000
-            h.duration.text = "%d:%02d".format(totalSec / 60, totalSec % 60)
+            val badge = s.codecLabel
+            h.duration.text = if (badge.isNotEmpty())
+                "$badge\n%d:%02d".format(totalSec / 60, totalSec % 60)
+            else "%d:%02d".format(totalSec / 60, totalSec % 60)
             Glide.with(h.art).load(s.albumArtUri)
                 .placeholder(R.drawable.ic_channel)
                 .error(R.drawable.ic_channel).into(h.art)
