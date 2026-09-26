@@ -25,8 +25,8 @@ class YouTubeProvider(private val apiKey: () -> String) : OnlineProvider {
     override val label = "YouTube · reproductor oficial"
     override val canStream = false
     override val configured: Boolean get() = apiKey().isNotBlank()
-    override val hint: String? get() =
-        "Para buscar en YouTube falta tu clave de YouTube Data API v3 (Ajustes → Música online)."
+    override val hint: String?
+        get() = if (apiKey().isBlank()) "Para buscar en YouTube falta tu clave de YouTube Data API v3 (Ajustes → Música online)." else null
 
     override suspend fun search(query: String, limit: Int): List<OnlineResult> = withContext(Dispatchers.IO) {
         val credential = apiKey().trim()
