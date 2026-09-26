@@ -46,8 +46,12 @@ class DynamicsController {
     }
 
     private fun configure(effect: DynamicsProcessing, preset: CompressorPreset, postGainDb: Float) {
-        effect.setMbcBandAllChannelsTo(0, band(preset, postGainDb))
-        effect.setLimiterAllChannelsTo(limiter())
+        val band = band(preset, postGainDb)
+        val limiter = limiter()
+        for (channel in 0 until effect.channelCount) {
+            effect.setMbcBandByChannelIndex(channel, 0, band)
+            effect.setLimiterByChannelIndex(channel, limiter)
+        }
     }
 
     private fun buildConfig(preset: CompressorPreset, postGainDb: Float): DynamicsProcessing.Config {
@@ -76,6 +80,7 @@ class DynamicsController {
     )
 
     private fun limiter() = DynamicsProcessing.Limiter(
+        true,
         true,
         0,
         CompressorMath.LIMITER_ATTACK_MS,
