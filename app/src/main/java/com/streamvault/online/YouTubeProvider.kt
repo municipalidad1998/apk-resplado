@@ -107,13 +107,12 @@ class YouTubeProvider(private val apiKey: () -> String) : OnlineProvider {
     internal fun isoDuration(value: String): Long {
         val match = Regex("^P(?:(\\d+)D)?T?(?:(\\d+)H)?(?:(\\d+)M)?(?:(\\d+(?:\\.\\d+)?)S)?$").find(value) ?: return 0L
         val (days, hours, minutes, seconds) = match.destructured
-        return days.toLongOrNull().orZero() * 86_400 +
-            hours.toLongOrNull().orZero() * 3_600 +
-            minutes.toLongOrNull().orZero() * 60 +
-            seconds.toDoubleOrNull()?.toLong() ?: 0L
+        val secs = seconds.toDoubleOrNull()?.toLong() ?: 0L
+        return (days.toLongOrNull() ?: 0L) * 86_400 +
+            (hours.toLongOrNull() ?: 0L) * 3_600 +
+            (minutes.toLongOrNull() ?: 0L) * 60 +
+            secs
     }
-
-    private fun Long?.orZero() = this ?: 0L
 
     /** The official embed player. No ad blocking, no background audio, no stream extraction. */
     internal fun embedUrl(videoId: String): String =
