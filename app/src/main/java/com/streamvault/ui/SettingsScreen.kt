@@ -103,15 +103,13 @@ fun SettingsScreen(vm: LibraryViewModel, permission: () -> Unit, folder: () -> U
                 } catch (_: Exception) { vm.notify("Este dispositivo no ofrece un ecualizador compatible") }
             })
             UpdateSection(vm)
-            item {
-                SectionTitle("Datos y calidad")
-                Toggle("Usar datos móviles", "Reproducir música online con la red del operador", settings.mobileData) { value -> update { it.copy(mobileData = value) } }
-                Toggle("Solo Wi‑Fi", "No consumir datos móviles en ninguna calidad", settings.wifiOnly) { value -> update { it.copy(wifiOnly = value) } }
-                Setting("Calidad online", Quality.values().firstOrNull { it.key == settings.onlineQuality }?.label ?: "Automática", { choose = "Calidad online" })
-                Text("Automática elige FLAC o la mejor calidad con Wi‑Fi, una calidad media con datos móviles y la más baja en conexiones lentas. "
-                    + "Tus archivos FLAC locales se reproducen tal cual, sin convertirlos, incluso sin Internet.",
-                    fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 6.dp))
-            }
+            SectionTitle("Datos y calidad")
+            Toggle("Usar datos móviles", "Reproducir música online con la red del operador", settings.mobileData) { value -> update { it.copy(mobileData = value) } }
+            Toggle("Solo Wi‑Fi", "No consumir datos móviles en ninguna calidad", settings.wifiOnly) { value -> update { it.copy(wifiOnly = value) } }
+            Setting("Calidad online", Quality.values().firstOrNull { it.key == settings.onlineQuality }?.label ?: "Automática", { choose = "Calidad online" })
+            Text("Automática elige FLAC o la mejor calidad con Wi‑Fi, una calidad media con datos móviles y la más baja en conexiones lentas. "
+                + "Tus archivos FLAC locales se reproducen tal cual, sin convertirlos, incluso sin Internet.",
+                fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 6.dp))
             SectionTitle("Respaldo")
             Setting("Guardar mis ajustes", "Exporta la configuración a un archivo que puedes conservar", { backup.launch("ajustes-reproductor-denilson.json") })
             Setting("Restaurar mis ajustes", "Recupera la configuración desde un respaldo anterior", { restore.launch(arrayOf("application/json", "text/*")) })
