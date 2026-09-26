@@ -13,7 +13,8 @@ class SettingsBackupTest {
         theme = "dark", crossfade = 30, skipSeconds = 15, detectSilence = false, thresholdDb = -60,
         minimumSilence = 0, autoScan = false, autoPlay = false, shuffle = true, repeat = 2, fades = false,
         animations = false, largeCovers = false, excludedFolders = "Ringtones\nNotifications",
-        autoUpdate = false, dynamicColor = false, normalize = false, targetLoudnessDb = -22, compressor = "voice"
+        autoUpdate = false, dynamicColor = false, normalize = false, targetLoudnessDb = -22, compressor = "voice",
+        youtubeApiKey = "AIza-prueba"
     )
 
     @Test fun exportsEverySettingWithItsOwnName() {
@@ -58,6 +59,7 @@ class SettingsBackupTest {
         assertEquals(2, written["repeat"])
         assertEquals(-22, written["targetLoudness"])
         assertEquals("voice", written["compressor"])
+        assertEquals("AIza-prueba", written["youtubeApiKey"])
         assertEquals(false, written["normalize"])
     }
 

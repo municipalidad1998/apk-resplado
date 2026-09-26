@@ -29,7 +29,10 @@ class VersioningTest {
 
     @Test fun updatesAreRecognisedFromTheReleaseTag() {
         val current = BuildConfig.VERSION_NAME
-        assertTrue(com.streamvault.update.UpdateParser.isNewer("2.8.0", current))
+        val parts = current.split('.').map { it.toIntOrNull() ?: 0 }
+        val next = "%d.%d.%d".format(parts.getOrElse(0) { 0 }, parts.getOrElse(1) { 0 } + 1, 0)
+        assertTrue(com.streamvault.update.UpdateParser.isNewer(next, current))
+        assertTrue(com.streamvault.update.UpdateParser.isNewer("99.0.0", current))
         assertTrue(!com.streamvault.update.UpdateParser.isNewer(current, current))
     }
 }
