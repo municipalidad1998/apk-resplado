@@ -6,6 +6,8 @@ class StreamVaultApp : Application() {
     companion object { lateinit var db: AppDatabase }
     override fun onCreate() {
         super.onCreate()
-        db = Room.databaseBuilder(this, AppDatabase::class.java, "streamvault.db").build()
+        db = Room.databaseBuilder(this, AppDatabase::class.java, "streamvault.db")
+            .addMigrations(AppDatabase.MIGRATION_1_2)
+            .build()
     }
 }

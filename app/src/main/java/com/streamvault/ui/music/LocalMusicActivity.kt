@@ -24,8 +24,10 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.streamvault.R
+import com.streamvault.StreamVaultApp
 import com.streamvault.data.local.LocalMusicProvider
 import com.streamvault.data.local.LocalSong
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 /**
@@ -45,6 +47,8 @@ class LocalMusicActivity : AppCompatActivity() {
         const val MODE_PHOTOS = "photos"
         const val MODE_DOCS = "docs"
         const val MODE_PLAYLISTS = "playlists"
+        const val MODE_FAVORITES = "favorites"
+        const val MODE_HISTORY = "history"
         private const val REQ_PERM = 1001
     }
 
@@ -84,9 +88,38 @@ class LocalMusicActivity : AppCompatActivity() {
                 findViewById<EditText>(R.id.etSearchMusic).hint = "Buscar en documentos locales…"
                 loadSimpleMedia(MediaStore.Files.getContentUri("external"), null)
             }
-            MODE_PLAYLISTS -> {
-                findViewById<TextView>(R.id.tvMusicTitle).text = "🎶 Playlists"
-                showEmpty("Playlists propias por fuente.\nLa gestión completa llega en la Fase B.")
+            MODE_FAVORITES -> {
+                findViewById<TextView>(R.id.tvMusicTitle).text = "❤️ Favoritos locales"
+                lifecycleScope.launch {
+                    StreamVaultApp.db.musicFavoritesDao().bySource("LOCAL").collectLatest { favs ->
+                        val songs = favs.map { f ->
+                            LocalSong(
+                                id = 0, title = f.title, artist = f.artist ?: "Desconocido",
+                                album = f.album ?: "", duration = f.duration,
+                                contentUri = f.uri, albumArtUri = f.artUri
+                            )
+                        }
+                        if (songs.isEmpty()) showEmpty("Sin favoritos aún.\nToca ♥ en el reproductor.")
+                        else showSongs(songs)
+                    }
+                }
+            }
+            MODE_HISTORY -> {
+                findViewById<TextView>(R.id.tvMusicTitle).text = "🕒 Historial local"
+                lifecycleScope.launch {
+                    StreamVaultApp.db.historyDao().recent().collectLatest { hist ->
+                        val local = hist.filter { it.source == "LOCAL" }
+                        val songs = local.map { x ->
+                            LocalSong(
+                                id = 0, title = x.title, artist = x.artist ?: "Desconocido",
+                                album = "", duration = x.durationMs,
+                                contentUri = x.uri, albumArtUri = x.artUri
+                            )
+                        }
+                        if (songs.isEmpty()) showEmpty("Sin reproducciones aún.")
+                        else showSongs(songs)
+                    }
+                }
             }
         }
     }

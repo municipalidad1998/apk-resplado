@@ -67,6 +67,11 @@
             android:name=".ui.settings.SettingsActivity"
             android:exported="false" />
 
+        <activity
+            android:name=".ui.playlists.PlaylistsActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+
         <service
             android:name=".playback.MusicPlayerService"
             android:exported="false"

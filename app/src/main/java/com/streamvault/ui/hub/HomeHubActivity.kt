@@ -68,8 +68,16 @@ class HomeHubActivity : AppCompatActivity() {
                 startActivity(Intent(this, TelegramConfigActivity::class.java))
             },
             HubItem("🎶", "Playlists") {
+                startActivity(Intent(this, com.streamvault.ui.playlists.PlaylistsActivity::class.java))
+            },
+            HubItem("❤️", "Favoritos") {
                 startActivity(Intent(this, LocalMusicActivity::class.java).apply {
-                    putExtra(LocalMusicActivity.EXTRA_MODE, LocalMusicActivity.MODE_PLAYLISTS)
+                    putExtra(LocalMusicActivity.EXTRA_MODE, LocalMusicActivity.MODE_FAVORITES)
+                })
+            },
+            HubItem("🕒", "Historial") {
+                startActivity(Intent(this, LocalMusicActivity::class.java).apply {
+                    putExtra(LocalMusicActivity.EXTRA_MODE, LocalMusicActivity.MODE_HISTORY)
                 })
             },
             HubItem("⚙", "Configuración") {

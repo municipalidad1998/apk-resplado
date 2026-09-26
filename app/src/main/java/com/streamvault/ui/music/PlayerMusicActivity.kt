@@ -18,9 +18,14 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
+import androidx.lifecycle.lifecycleScope
 import com.streamvault.R
+import com.streamvault.StreamVaultApp
+import com.streamvault.data.db.MusicFavoriteEntity
+import com.streamvault.data.db.PlayHistoryEntity
 import com.streamvault.data.local.LocalSong
 import com.streamvault.playback.MusicPlayerService
+import kotlinx.coroutines.launch
 
 /**
  * Reproductor de música local a pantalla completa.
@@ -50,6 +55,7 @@ class PlayerMusicActivity : AppCompatActivity() {
     private lateinit var btnPlay: ImageButton
     private lateinit var btnShuffle: ImageButton
     private lateinit var btnRepeat: ImageButton
+    private lateinit var btnFav: ImageButton
 
     private val progressRunnable = object : Runnable {
         override fun run() {
@@ -84,6 +90,28 @@ class PlayerMusicActivity : AppCompatActivity() {
         btnShuffle = findViewById(R.id.btnShuffle)
         btnRepeat = findViewById(R.id.btnRepeat)
         findViewById<View>(R.id.btnClosePlayer).setOnClickListener { finish() }
+
+        btnFav = findViewById(R.id.btnFav)
+        btnFav.setOnClickListener {
+            val idx = controller?.currentMediaItemIndex ?: return@setOnClickListener
+            val s = queue.getOrNull(idx) ?: return@setOnClickListener
+            lifecycleScope.launch {
+                val favDao = StreamVaultApp.db.musicFavoritesDao()
+                if (favDao.exists(s.contentUri)) {
+                    favDao.deleteByUri(s.contentUri)
+                    btnFav.alpha = 0.4f
+                } else {
+                    favDao.insert(
+                        MusicFavoriteEntity(
+                            uri = s.contentUri, source = "LOCAL", title = s.title,
+                            artist = s.artist, album = s.album, artUri = s.albumArtUri,
+                            duration = s.duration
+                        )
+                    )
+                    btnFav.alpha = 1f
+                }
+            }
+        }
 
         findViewById<ImageButton>(R.id.btnNext).setOnClickListener { controller?.seekToNextMediaItem() }
         findViewById<ImageButton>(R.id.btnPrev).setOnClickListener { controller?.seekToPreviousMediaItem() }
@@ -167,6 +195,16 @@ class PlayerMusicActivity : AppCompatActivity() {
         Glide.with(this).load(s.albumArtUri)
             .placeholder(R.drawable.logo_circle_bg)
             .error(R.drawable.logo_circle_bg).into(ivCover)
+        // Historial + estado del corazón
+        lifecycleScope.launch {
+            btnFav.alpha = if (StreamVaultApp.db.musicFavoritesDao().exists(s.contentUri)) 1f else 0.4f
+            StreamVaultApp.db.historyDao().insert(
+                PlayHistoryEntity(
+                    source = "LOCAL", uri = s.contentUri, title = s.title,
+                    artist = s.artist, artUri = s.albumArtUri, durationMs = s.duration
+                )
+            )
+        }
     }
 
     private fun updatePlayButton(playing: Boolean) {
