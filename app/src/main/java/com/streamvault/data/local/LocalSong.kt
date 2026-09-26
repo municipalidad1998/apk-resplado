@@ -20,5 +20,6 @@ data class LocalSong(
     val disc: Int? = null,
     val duration: Long = 0L,
     val contentUri: String,
-    val albumArtUri: String? = null
+    val albumArtUri: String? = null,
+    val path: String? = null
 ) : Parcelable

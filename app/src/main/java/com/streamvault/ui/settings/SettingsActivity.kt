@@ -90,19 +90,43 @@ class SettingsActivity : AppCompatActivity() {
             override fun onNothingSelected(p: AdapterView<*>?) {}
         }
 
-        // Crossfade
+        // Crossfade (5/10/15/20s según especificación)
         val spCross = findViewById<Spinner>(R.id.spCrossfade)
-        val crossOptions = listOf("Desactivado", "2 segundos", "4 segundos", "6 segundos", "8 segundos", "10 segundos")
+        val crossSecs = listOf(0, 5, 10, 15, 20)
+        val crossOptions = listOf("Desactivado", "5 segundos", "10 segundos", "15 segundos", "20 segundos")
         spCross.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, crossOptions)
-        spCross.setSelection(crossOptions.indexOfFirst {
-            it.startsWith(prefs.getInt("crossfade_sec", 0).toString()) || (prefs.getInt("crossfade_sec", 0) == 0 && it == "Desactivado")
-        }.coerceAtLeast(0))
+        spCross.setSelection(crossSecs.indexOf(prefs.getInt("crossfade_sec", 0)).coerceAtLeast(0))
         spCross.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(p: AdapterView<*>?, v: View?, pos: Int, id: Long) {
-                val sec = if (pos == 0) 0 else pos * 2
-                prefs.edit().putInt("crossfade_sec", sec).apply()
+                prefs.edit().putInt("crossfade_sec", crossSecs[pos]).apply()
             }
             override fun onNothingSelected(p: AdapterView<*>?) {}
+        }
+
+        // Modo de normalización: LUFS o ReplayGain
+        val spNorm = findViewById<Spinner>(R.id.spNormMode)
+        val normOptions = listOf("LUFS Normalization (-14 predeterminado)", "ReplayGain (etiquetas del archivo)")
+        spNorm.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, normOptions)
+        spNorm.setSelection(if (
+            com.streamvault.playback.PlaybackSettings.getNormMode(this) ==
+            com.streamvault.playback.PlaybackSettings.NormMode.REPLAYGAIN
+        ) 1 else 0)
+        spNorm.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(p: AdapterView<*>?, v: View?, pos: Int, id: Long) {
+                com.streamvault.playback.PlaybackSettings.setNormMode(
+                    this@SettingsActivity,
+                    if (pos == 1) com.streamvault.playback.PlaybackSettings.NormMode.REPLAYGAIN
+                    else com.streamvault.playback.PlaybackSettings.NormMode.LUFS
+                )
+            }
+            override fun onNothingSelected(p: AdapterView<*>?) {}
+        }
+
+        // Gapless
+        val swGapless = findViewById<Switch>(R.id.swGapless)
+        swGapless.isChecked = com.streamvault.playback.PlaybackSettings.isGaplessEnabled(this)
+        swGapless.setOnCheckedChangeListener { _, checked ->
+            com.streamvault.playback.PlaybackSettings.setGapless(this, checked)
         }
 
         // Actualización

@@ -68,7 +68,8 @@ class LocalMusicProvider(private val context: Context) {
                         track = track,
                         disc = disc,
                         contentUri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id).toString(),
-                        albumArtUri = art
+                        albumArtUri = art,
+                        path = path
                     )
                 )
             }

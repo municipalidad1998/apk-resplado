@@ -20,6 +20,14 @@ class EqualizerActivity : AppCompatActivity() {
     companion object { const val EXTRA_SESSION_ID = "session_id" }
 
     private var equalizer: Equalizer? = null
+    private val bandSeeks = mutableListOf<SeekBar>()
+
+    private fun refreshLevels(eq: Equalizer) {
+        val range = eq.bandLevelRange
+        for (b in 0 until eq.numberOfBands) {
+            bandSeeks.getOrNull(b)?.progress = (eq.getBandLevel(b.toShort()) - range[0]).toInt()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,10 +41,33 @@ class EqualizerActivity : AppCompatActivity() {
             Toast.makeText(this, "Ecualizador no disponible en esta sesión", Toast.LENGTH_LONG).show()
         }
         val eq = equalizer ?: return
+        // guarda referencia a los sliders por banda para refrescar al cambiar preset
+        bandSeeks.clear()
 
         val swEnable = findViewById<Switch>(R.id.swEqEnable)
         swEnable.isChecked = try { eq.enabled } catch (e: Exception) { false }
         swEnable.setOnCheckedChangeListener { _, on -> eq.enabled = on }
+
+        // Presets + Bass Boost
+        val spPresets = findViewById<android.widget.Spinner>(R.id.spEqPresets)
+        val presetNames = (0 until eq.numberOfPresets).map { eq.getPresetName(it.toShort()) } +
+                listOf("Bass Boost", "Personalizado")
+        spPresets.adapter = android.widget.ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, presetNames)
+        var bassBoost: android.media.audiofx.BassBoost? = null
+        spPresets.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(p: android.widget.AdapterView<*>?, v: View?, pos: Int, id: Long) {
+                if (pos < eq.numberOfPresets) {
+                    eq.usePreset(pos.toShort())
+                    bassBoost?.enabled = false
+                } else if (pos == eq.numberOfPresets.toInt()) {
+                    bassBoost = android.media.audiofx.BassBoost(0, sessionId).apply {
+                        setStrength(800); enabled = true
+                    }
+                }
+                refreshLevels(eq)
+            }
+            override fun onNothingSelected(p: android.widget.AdapterView<*>?) {}
+        }
 
         val container = findViewById<LinearLayout>(R.id.eqBands)
         val bands = eq.numberOfBands
@@ -61,6 +92,7 @@ class EqualizerActivity : AppCompatActivity() {
             }
             container.addView(label)
             container.addView(seek)
+            bandSeeks.add(seek)
         }
     }
 

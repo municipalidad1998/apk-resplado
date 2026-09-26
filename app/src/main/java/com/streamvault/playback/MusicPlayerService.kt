@@ -87,7 +87,8 @@ class MusicPlayerService : MediaSessionService() {
             .build()
         player.addListener(object : Player.Listener {
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-                LoudnessNormalizer.applyTrackGain(this@MusicPlayerService, player, mediaItem?.mediaId)
+                val path = PlaybackStateHolder.queue.getOrNull(player.currentMediaItemIndex)?.path
+                LoudnessNormalizer.applyTrackGain(this@MusicPlayerService, player, mediaItem?.mediaId, path)
                 baseGain = player.volume
                 if (crossfadeMs() > 0) { envelope = 0f; fadingIn = true; applyVolume() }
             }

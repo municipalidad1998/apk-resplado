@@ -46,20 +46,28 @@ object LoudnessNormalizer {
             .apply()
     }
 
-    /** Aplica la ganancia de reproducción según la loudness conocida de la pista. */
-    fun applyTrackGain(context: Context, player: ExoPlayer, mediaId: String?) {
+    /** Aplica la ganancia de reproducción: ReplayGain (si hay etiquetas) o LUFS. */
+    fun applyTrackGain(context: Context, player: ExoPlayer, mediaId: String?, localPath: String? = null) {
         if (!isEnabled(context) || mediaId == null) { player.volume = 1f; return }
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        if (!prefs.contains("lufs_$mediaId")) { player.volume = 1f; return } // aún sin análisis
-        val trackLufs = prefs.getFloat("lufs_$mediaId", -14f)
-        val truePeak = prefs.getFloat("tp_$mediaId", 0f)
-        val target = getTargetLufs(context).toFloat()
-        // Ganancia necesaria en dB para igualar el volumen percibido
-        var gainDb = target - trackLufs
-        // Limitador anti-clipping: no permitir que el true peak pase de -0.3 dBFS
-        gainDb = min(gainDb, -0.3f - truePeak)
-        // Clamp de seguridad -12dB .. +6dB
-        gainDb = max(-12f, min(6f, gainDb))
-        player.volume = 10f.pow(gainDb / 20f)
+        var gainDb: Float? = null
+
+        // 1) ReplayGain: etiquetas del propio archivo
+        if (PlaybackSettings.getNormMode(context) == PlaybackSettings.NormMode.REPLAYGAIN && localPath != null) {
+            val rg = kotlinx.coroutines.runBlocking { ReplayGainReader.read(localPath) }
+            gainDb = rg.trackGainDb ?: rg.albumGainDb
+        }
+
+        // 2) LUFS cacheado
+        if (gainDb == null) {
+            if (!prefs.contains("lufs_$mediaId")) { player.volume = 1f; return }
+            val trackLufs = prefs.getFloat("lufs_$mediaId", -14f)
+            val truePeak = prefs.getFloat("tp_$mediaId", 0f)
+            gainDb = min(getTargetLufs(context).toFloat() - trackLufs, -0.3f - truePeak)
+        }
+
+        // Limitador anti-clipping: -12 dB .. +6 dB
+        val g = max(-12f, min(6f, gainDb ?: 0f))
+        player.volume = 10f.pow(g / 20f)
     }
 }
