@@ -3,6 +3,7 @@ package com.streamvault.playback
 import android.media.audiofx.DynamicsProcessing
 import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 
 /**
  * Applies the compressor with the system DynamicsProcessing effect (Android 9 / API 28+).
@@ -28,39 +29,37 @@ class DynamicsController {
             return
         }
         runCatching {
-            val effect = DynamicsProcessing(0, sessionId, buildConfig())
-            configure(effect, preset, postGainDb)
-            effect.enabled = true
+            val effect = create(sessionId, preset, postGainDb)
             effects[sessionId] = effect
         }.onFailure { Log.w("Dynamics", "No se pudo aplicar el compresor: ${it.message}") }
     }
 
-    fun clear(sessionId: Int) {
-        effects.remove(sessionId)?.let { effect ->
-            runCatching { effect.enabled = false; effect.release() }
-        }
+    @RequiresApi(Build.VERSION_CODES.P)
+    private fun create(sessionId: Int, preset: CompressorPreset, postGainDb: Float): DynamicsProcessing {
+        val effect = DynamicsProcessing(0, sessionId, skeleton())
+        configure(effect, preset, postGainDb)
+        effect.enabled = true
+        return effect
     }
 
-    fun release() {
-        effects.values.forEach { runCatching { it.release() } }
-        effects.clear()
-    }
-
+    @RequiresApi(Build.VERSION_CODES.P)
     private fun configure(effect: DynamicsProcessing, preset: CompressorPreset, postGainDb: Float) {
         val band = band(preset, postGainDb)
         val limiter = limiter()
-        for (channel in 0 until effect.channelCount) {
+        for (channel in 0 until CHANNELS) {
             effect.setMbcBandByChannelIndex(channel, 0, band)
             effect.setLimiterByChannelIndex(channel, limiter)
         }
     }
 
     /** Skeleton: two channels, one broadband compressor band each and the limiter switched on. */
-    private fun buildConfig(): DynamicsProcessing.Config = DynamicsProcessing.Config.Builder(
+    @RequiresApi(Build.VERSION_CODES.P)
+    private fun skeleton(): DynamicsProcessing.Config = DynamicsProcessing.Config.Builder(
         DynamicsProcessing.VARIANT_FAVOR_FREQUENCY_RESOLUTION,
-        2, false, 0, true, 1, false, 0, true
+        CHANNELS, false, 0, true, 1, false, 0, true
     ).build()
 
+    @RequiresApi(Build.VERSION_CODES.P)
     private fun band(preset: CompressorPreset, postGainDb: Float) = DynamicsProcessing.MbcBand(
         true,
         CompressorMath.BAND_CUTOFF_HZ,
@@ -75,6 +74,7 @@ class DynamicsController {
         postGainDb
     )
 
+    @RequiresApi(Build.VERSION_CODES.P)
     private fun limiter() = DynamicsProcessing.Limiter(
         true,
         true,
@@ -85,4 +85,19 @@ class DynamicsController {
         CompressorMath.LIMITER_THRESHOLD_DB,
         0f
     )
+
+    fun clear(sessionId: Int) {
+        effects.remove(sessionId)?.let { effect ->
+            runCatching { effect.enabled = false; effect.release() }
+        }
+    }
+
+    fun release() {
+        effects.values.forEach { runCatching { it.release() } }
+        effects.clear()
+    }
+
+    private companion object {
+        const val CHANNELS = 2
+    }
 }
