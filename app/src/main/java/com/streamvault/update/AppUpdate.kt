@@ -71,7 +71,10 @@ object UpdateParser {
         return false
     }
 
-    private fun numbers(version: String): List<Int> = version.trim().trimStart('v', 'V')
-        .split('.', '-', '_', '+')
-        .mapNotNull { part -> part.takeWhile { it.isDigit() }.toIntOrNull() }
+    private fun numbers(version: String): List<Int> {
+        val cleaned = version.trim().trimStart('v', 'V').trimEnd('.')
+        return cleaned.split('.').mapNotNull { part ->
+            part.takeWhile { it.isDigit() }.toIntOrNull()
+        }.ifEmpty { listOf(0) }
+    }
 }
