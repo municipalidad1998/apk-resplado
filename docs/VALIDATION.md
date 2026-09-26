@@ -113,3 +113,19 @@ usa el secreto `KEYSTORE_BASE64`, conviene borrar el archivo del repositorio.
 - **Correcciones que exigieron Lint:** `DynamicsProcessing` necesita API 28 (se aísla con `@RequiresApi` y una comprobación de versión), el constructor de `Limiter` lleva el parámetro `inUse`, las reglas de respaldo no pueden excluir rutas no incluidas y el receptor de instalación debe registrarse con `ContextCompat`.
 - **Incidencia de infraestructura:** el trabajo 108300678755 (run 36205196439) falló porque el runner no pudo descomprimir el paquete del emulador de Android; se relanzó con el código sin cambios y pasó.
 - **No probado en dispositivo:** el efecto del compresor sonando (el emulador no garantiza `DynamicsProcessing`), la instalación real de una actualización sobre otra y la restauración desde un respaldo.
+
+## Resultado verificado 2.5.0 · run 36208716430 · código `b845d14`
+
+- **Build:** 57/57 pruebas JVM, Android Lint y compilación del APK.
+- **Dispositivo:** 10/10 pruebas instrumentadas en Android 15 / API 35.
+- **Publicación:** release `v2.5.0` con `reproductor-denilson-2.5.0.apk` (21 619 851 bytes), misma firma estable.
+- **Pruebas nuevas (JVM):**
+  - `ArchiveProviderTest`: clasificación de formatos (FLAC/MP3/OGG/WAV/AAC y rechazo de portadas y metadatos), parseo de la respuesta de búsqueda, parseo de `metadata` de un ítem en streams reproducibles y títulos legibles.
+  - `QualityChooserTest`: calidad automática según Wi‑Fi, datos móviles y conexión lenta; respeto de la calidad elegida; respaldo cuando la calidad pedida no existe; respeto de «solo Wi‑Fi» y «usar datos móviles».
+  - `AudioFormatInfoTest`: etiqueta `FLAC · 24-bit / 96 kHz · Lossless`, ausencia de la etiqueta Lossless en MP3/OGG y cálculo de la profundidad de bits.
+- **Errores reales que encontraron las pruebas:**
+  - `ConnectivityMonitor` se creaba en el constructor del servicio y provocaba `NullPointerException` al arrancar (el Context aún no existe). Se crea de forma diferida.
+  - Los campos de metadatos del Internet Archive llegan a veces como arreglo y se mostraban como `["Título"]`. Ahora se toma el primer valor.
+  - `.m4a` se clasificaba como ALAC; es AAC salvo que el contenedor indique ALAC.
+  - La prueba de navegación seguía buscando la sección «Buscar», renombrada a «Explorar».
+- **No probado:** streaming real contra archive.org desde un teléfono (la verificación de red se hizo con pruebas unitarias sobre el parseo y la selección de calidad), comportamiento con datos móviles reales ni FLAC de 24-bit/96 kHz en hardware real.

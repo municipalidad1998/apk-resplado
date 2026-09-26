@@ -1,25 +1,25 @@
 # Reproductor de música Denilson
 
+**Versión 2.5.0:** [música online con proveedor intercambiable, calidad según la conexión y FLAC con datos reales](docs/MUSICA_ONLINE_Y_FLAC.md).
 **Versión 2.4.0:** [compresor ajustable, instalación de actualizaciones sin errores y respaldo de la configuración](docs/COMPRESOR_Y_ACTUALIZACIONES.md).
 **Versión 2.3.0:** [volumen parejo: mide y nivela el volumen real de cada canción](docs/VOLUMEN_PAREJO.md).
 **Versión 2.2.0:** nombre propio, [actualizaciones automáticas, botón YouTube oficial y diseño renovado](docs/DENILSON_2_2.md).
-**Versión 2.1:** [correcciones de cola, inicio, navegación y crossfade por pista](docs/PLAYER_FIXES_2_1.md).
 
-Reproductor **Android nativo**, local y sin cuenta. Kotlin + Jetpack Compose + Room + Media3. Este proyecto reemplaza la interfaz IPTV anterior de StreamVault; conserva `applicationId = com.streamvault`, pero utiliza una nueva base `lumina-library.db` y **no importa las antiguas listas IPTV**.
+Reproductor **Android nativo** en Kotlin + Jetpack Compose + Room + Media3. Reproduce **música por internet** (catálogo libre) y **tus archivos locales**, incluido FLAC sin convertir, con la misma cola, favoritos, playlists y notificación.
 
-No es una web empaquetada, no contiene canciones de demostración y no sube archivos. Al abrirlo por primera vez, la biblioteca estará vacía hasta que se autorice el acceso a música o una carpeta.
+No es una web empaquetada y no inserta anuncios propios. Al abrirlo por primera vez, la biblioteca local estará vacía hasta que autorices el acceso a tu música o elijas una carpeta.
 
-## APK verificado — Reproductor de música Denilson 2.4.0
+## APK verificado — Reproductor de música Denilson 2.5.0
 
-**[Descargar el APK](https://github.com/municipalidad1998/apk-resplado/releases/download/v2.4.0/reproductor-denilson-2.4.0.apk)** · [Página del release](https://github.com/municipalidad1998/apk-resplado/releases/tag/v2.4.0)
+**[Descargar el APK](https://github.com/municipalidad1998/apk-resplado/releases/download/v2.5.0/reproductor-denilson-2.5.0.apk)** · [Página del release](https://github.com/municipalidad1998/apk-resplado/releases/tag/v2.5.0)
 
-Desde la 2.2 el APK se firma con una clave estable del repositorio, por lo que se instala **encima** de la versión anterior sin desinstalar ni perder la biblioteca; la app lo detecta en **Ajustes → Actualizaciones**. Actualizando conservas todo; si tienes la 2.1 o anterior, Android pedirá desinstalar primero (guarda tus ajustes antes en **Ajustes → Respaldo**).
+Build del código `b845d14`: **57/57 pruebas JVM, Android Lint, compilación y 10/10 pruebas instrumentadas en Android 15**. Se instala encima de la versión anterior sin desinstalar (misma firma) y la app lo detecta en **Ajustes → Actualizaciones**.
 
-### Límites reales de la versión 2.4.0
+### Límites reales de la versión 2.5.0
 
-- **Compresor:** requiere Android 9+; equilibra bajos y altos dentro de la canción con limitador a −1 dB, en tiempo real y sin tocar el archivo.
-- **Volumen parejo:** mide RMS de una ventana de 90 s. No es LUFS de broadcast.
+- **La música online es de catálogo libre** (Internet Archive). No es el catálogo comercial: los éxitos de las grandes discográficas sólo se pueden escuchar en el reproductor oficial de YouTube o pagando licencias.
 - **YouTube:** el botón abre la búsqueda en la **app oficial**. No bloquea anuncios ni reproduce YouTube en segundo plano: eso depende de YouTube Premium y sus términos.
+- **FLAC:** la profundidad de bits se calcula desde el bitrate cuando el contenedor no la expone.
 - **Separación de voz:** sigue sin modelo instalado; la opción lo indica en lugar de simular un resultado.
 
 ## Compilar e instalar
