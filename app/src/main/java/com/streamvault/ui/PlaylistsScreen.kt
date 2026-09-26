@@ -42,7 +42,12 @@ fun PlaylistsScreen(vm: LibraryViewModel, menu: (Track) -> Unit, library: () -> 
     LazyColumn(contentPadding = PaddingValues(horizontal = 22.dp, vertical = 18.dp)) {
         item {
             if (selected != null) TextButton(onClick = { selectedId = null }) { Icon(Icons.Rounded.ArrowBack, null); Text(" Playlists") }
-            PageHeader("EL SONIDO DE TUS MOMENTOS", selected?.name ?: "Tus playlists", selected?.description ?: "Colecciones con tu propia personalidad.")
+            // A compact header in the list: the first playlist has to be reachable on any screen.
+            if (selected == null) {
+                Text("Tus playlists", fontSize = 26.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 4.dp))
+                if (lists.isNotEmpty()) Text("${lists.size} ${if (lists.size == 1) "lista" else "listas"} · toca una para abrirla",
+                    fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 10.dp))
+            } else PageHeader("EL SONIDO DE TUS MOMENTOS", selected.name, selected.description.ifBlank { "Colecciones con tu propia personalidad." })
             if (selected == null) {
                 // Button and filters on one line: the first playlist has to stay on screen.
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
