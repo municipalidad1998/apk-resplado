@@ -108,7 +108,7 @@ interface LibraryDao {
     @Query("DELETE FROM locations WHERE root = :root AND seen != :seen") suspend fun prune(root: String, seen: String)
     @Query("DELETE FROM locations WHERE root = :root") suspend fun forgetRoot(root: String)
     @Query("SELECT * FROM locations WHERE trackId = :id") suspend fun locations(id: String): List<AudioLocation>
-    @Query("UPDATE tracks SET available = EXISTS(SELECT 1 FROM locations WHERE trackId = tracks.id), uri = COALESCE((SELECT uri FROM locations WHERE trackId = tracks.id LIMIT 1), uri)")
+    @Query("UPDATE tracks SET available = CASE WHEN source = 'online' THEN 1 ELSE EXISTS(SELECT 1 FROM locations WHERE trackId = tracks.id) END, uri = CASE WHEN source = 'online' THEN uri ELSE COALESCE((SELECT uri FROM locations WHERE trackId = tracks.id LIMIT 1), uri) END")
     suspend fun reconcile()
     @Query("SELECT DISTINCT folder FROM tracks WHERE hidden = 0 AND available = 1 ORDER BY folder") fun folders(): Flow<List<String>>
     @Query("SELECT DISTINCT artist FROM tracks WHERE hidden = 0 AND available = 1 ORDER BY artist") fun artists(): Flow<List<String>>

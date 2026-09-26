@@ -28,7 +28,7 @@ import androidx.work.WorkInfo
 import com.streamvault.data.Track
 
 @Composable
-fun HomeScreen(vm: LibraryViewModel, permission: () -> Unit, folder: () -> Unit, library: (LibraryFilter) -> Unit, playlists: () -> Unit, menu: (Track) -> Unit) {
+fun HomeScreen(vm: LibraryViewModel, permission: () -> Unit, folder: () -> Unit, library: (LibraryFilter) -> Unit, playlists: () -> Unit, explore: () -> Unit, menu: (Track) -> Unit) {
     val tracks by vm.home.collectAsStateWithLifecycle()
     val favorites by vm.favorites.collectAsStateWithLifecycle()
     val whatsapp by vm.whatsapp.collectAsStateWithLifecycle()
@@ -52,8 +52,16 @@ fun HomeScreen(vm: LibraryViewModel, permission: () -> Unit, folder: () -> Unit,
             }
             Text("Hecha para tus oídos.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
             Text("Un universo de música.", fontSize = 29.sp, fontWeight = FontWeight.Bold, letterSpacing = (-1).sp, modifier = Modifier.padding(top = 6.dp, bottom = 18.dp))
+            Text(greeting(), fontSize = 27.sp, fontWeight = FontWeight.Bold, letterSpacing = (-1).sp)
+            Spacer(Modifier.height(14.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                ModeCard("Música Online", "Busca y reproduce por Internet", Icons.Rounded.TravelExplore, MaterialTheme.colorScheme.primaryContainer, Modifier.weight(1f), explore)
+                ModeCard("Mi música", "$count canciones en el teléfono", Icons.Rounded.LibraryMusic, MaterialTheme.colorScheme.surfaceVariant, Modifier.weight(1f)) { library(LibraryFilter()) }
+            }
+            Spacer(Modifier.height(14.dp))
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 item { FilterChip(selected = true, onClick = {}, label = { Text("Para ti") }) }
+                item { FilterChip(selected = false, onClick = explore, label = { Text("Online") }) }
                 item { FilterChip(selected = false, onClick = { library(LibraryFilter()) }, label = { Text("Canciones") }) }
                 item { FilterChip(selected = false, onClick = { library(LibraryFilter(source = "whatsapp")) }, label = { Text("WhatsApp") }) }
                 item { FilterChip(selected = false, onClick = { library(LibraryFilter(source = "instrumental")) }, label = { Text("Instrumentales") }) }
@@ -126,4 +134,20 @@ private fun CoverCarousel(tracks: List<Track>, large: Boolean, play: (Track) -> 
             }
         }
     }
+
+}
+
+@Composable
+private fun ModeCard(title: String, subtitle: String, icon: androidx.compose.ui.graphics.vector.ImageVector, color: Color, modifier: Modifier = Modifier, click: () -> Unit) {
+    Column(modifier.clip(RoundedCornerShape(20.dp)).background(color).clickable(onClick = click).padding(16.dp).heightIn(min = 104.dp), verticalArrangement = Arrangement.SpaceBetween) {
+        Icon(icon, null, Modifier.size(26.dp), MaterialTheme.colorScheme.primary)
+        Column { Text(title, fontWeight = FontWeight.Bold, fontSize = 14.sp); Text(subtitle, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 15.sp) }
+    }
+}
+
+private fun greeting(): String = when (java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)) {
+    in 0..5 -> "Buenas madrugadas"
+    in 6..11 -> "Buenos días"
+    in 12..18 -> "Buenas tardes"
+    else -> "Buenas noches"
 }

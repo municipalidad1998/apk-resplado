@@ -35,8 +35,8 @@ fun LuminaAppUI(vm: LibraryViewModel, requestPermission: () -> Unit, chooseFolde
     // An automatic check never interrupts playback: it only tells you the new version exists.
     LaunchedEffect(update) { if (update is UpdateState.Available && !fullPlayer && menuTrack == null) snackbar.showSnackbar("Nueva versión ${(update as UpdateState.Available).info.version}: abre Ajustes → Actualizaciones") }
     fun library(filter: LibraryFilter = LibraryFilter()) { vm.filter.value = filter; vm.query.value = ""; page = 1 }
-    val labels = listOf("Inicio", "Biblioteca", "Playlists", "Buscar", "Ajustes")
-    val icons = listOf(Icons.Rounded.Home, Icons.Rounded.LibraryMusic, Icons.Rounded.QueueMusic, Icons.Rounded.Search, Icons.Rounded.Tune)
+    val labels = listOf("Inicio", "Explorar", "Biblioteca", "Playlists", "Ajustes")
+    val icons = listOf(Icons.Rounded.Home, Icons.Rounded.TravelExplore, Icons.Rounded.LibraryMusic, Icons.Rounded.QueueMusic, Icons.Rounded.Tune)
     LuminaTheme(settings.theme, settings.dynamicColor) {
         Surface(Modifier.fillMaxSize()) {
             BoxWithConstraints {
@@ -44,14 +44,14 @@ fun LuminaAppUI(vm: LibraryViewModel, requestPermission: () -> Unit, chooseFolde
                 Row(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))) {
                     if (wide) NavigationRail(containerColor = MaterialTheme.colorScheme.background) {
                         Spacer(Modifier.height(28.dp)); Icon(Icons.Rounded.GraphicEq, "Reproductor de música Denilson", tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.height(36.dp))
-                        labels.forEachIndexed { i, label -> NavigationRailItem(selected = page == i, onClick = { page = i; if (i == 3) vm.filter.value = LibraryFilter() }, icon = { Icon(icons[i], label) }, label = { Text(label) }) }
+                        labels.forEachIndexed { i, label -> NavigationRailItem(selected = page == i, onClick = { page = i }, icon = { Icon(icons[i], label) }, label = { Text(label) }) }
                     }
                     Scaffold(modifier = Modifier.weight(1f), snackbarHost = { SnackbarHost(snackbar) }, bottomBar = {
                         Column {
                             if (current != null) MiniPlayer(current!!, playback, vm::toggle, vm::next, analyzing == current?.id) { fullPlayer = true }
                             if (!wide) NavigationBar(containerColor = MaterialTheme.colorScheme.background, tonalElevation = 0.dp) {
                                 labels.forEachIndexed { i, label -> NavigationBarItem(selected = page == i,
-                                    onClick = { page = i; if (i == 3) vm.filter.value = LibraryFilter() },
+                                    onClick = { page = i },
                                     icon = { Icon(icons[i], label, Modifier.size(23.dp)) }, label = { Text(label, fontSize = 10.sp) }) }
                             } else Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
                         }
@@ -59,10 +59,10 @@ fun LuminaAppUI(vm: LibraryViewModel, requestPermission: () -> Unit, chooseFolde
                         Box(Modifier.fillMaxSize().padding(padding)) {
                             Crossfade(targetState = page, animationSpec = tween(if (settings.animations) 220 else 0), label = "Pantalla") { destination ->
                             when (destination) {
-                                0 -> HomeScreen(vm, requestPermission, chooseFolder, ::library, { page = 2 }, { menuTrack = it })
-                                1 -> LibraryScreen(vm, false, requestPermission, chooseFolder, { menuTrack = it })
-                                2 -> PlaylistsScreen(vm, { menuTrack = it }, { library() })
-                                3 -> LibraryScreen(vm, true, requestPermission, chooseFolder, { menuTrack = it })
+                                0 -> HomeScreen(vm, requestPermission, chooseFolder, ::library, { page = 3 }, { page = 1 }, { menuTrack = it })
+                                1 -> ExploreScreen(vm)
+                                2 -> LibraryScreen(vm, false, requestPermission, chooseFolder, { menuTrack = it })
+                                3 -> PlaylistsScreen(vm, { menuTrack = it }, { library() })
                                 else -> SettingsScreen(vm, requestPermission, chooseFolder)
                             }
                             }

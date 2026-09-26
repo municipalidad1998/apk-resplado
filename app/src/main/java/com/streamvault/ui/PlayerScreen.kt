@@ -137,6 +137,10 @@ fun FullPlayer(vm: LibraryViewModel, track: Track, state: PlaybackState, dismiss
                                 Icon(Icons.Rounded.VolumeUp, null, Modifier.size(18.dp), MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                             if (track.offset(settings.detectSilence) > 0) Text("Inicio inteligente · ${"%.1f".format(track.offset(settings.detectSilence) / 1000.0)} s", color = MaterialTheme.colorScheme.primary, fontSize = 11.sp)
+                            val format = remember(track.uri) { mutableStateOf<com.streamvault.flac.AudioFormatInfo?>(null) }
+                            LaunchedEffect(track.uri) { format.value = if (track.source == "online") null else vm.formatOf(track) }
+                            format.value?.let { info -> Text(if (track.source == "online") info.badge else "${info.badge}${if (info.bitrateKbps > 0) " · ${info.bitrateKbps} kbps" else ""}", color = MaterialTheme.colorScheme.primary, fontSize = 11.sp, modifier = Modifier.testTag("format-badge")) }
+                            if (track.source == "online") Text("Online · Internet Archive", color = MaterialTheme.colorScheme.primary, fontSize = 11.sp)
                             if (settings.normalize) Text("Volumen parejo · ${LoudnessMath.label(LoudnessMath.gainDb(settings.targetLoudnessDb.toFloat(), track.loudnessDb), track.loudnessDb != null)}", color = MaterialTheme.colorScheme.primary, fontSize = 11.sp)
                         }
                     }

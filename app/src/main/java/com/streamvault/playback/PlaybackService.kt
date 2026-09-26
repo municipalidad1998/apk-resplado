@@ -13,6 +13,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import com.streamvault.data.Track
+import com.streamvault.network.ConnectivityMonitor
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -46,6 +47,8 @@ class PlaybackService : MediaSessionService() {
     private val preparedIds = mutableSetOf<String>()
     private val normalizer = LoudnessNormalizer()
     private val dynamics = DynamicsController()
+    private val connectivity = ConnectivityMonitor(this)
+    private var offlineError = false
     private var attenuation = 1f
     private val attributes = AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build()
 
@@ -97,6 +100,16 @@ class PlaybackService : MediaSessionService() {
                 }
             }
         }
+        connectivity.start()
+        scope.launch {
+            connectivity.state.collect { net ->
+                // A track that failed only because the network dropped resumes by itself.
+                if (net.online && offlineError && active.playerError != null) {
+                    offlineError = false
+                    active.prepare(); active.play()
+                }
+            }
+        }
         scope.launch { while (isActive) { tick(); delay(40) } }
     }
     private fun newPlayer(focus: Boolean) = ExoPlayer.Builder(this).setSeekBackIncrementMs(app.preferences.state.value.skipSeconds * 1000L)
@@ -123,7 +136,16 @@ class PlaybackService : MediaSessionService() {
         }
         override fun onPlayerError(error: PlaybackException) {
             cancelMix()
-            PlaybackEvents.error.value = "No se pudo reproducir este archivo (${error.errorCodeName}). Comprueba el formato y el acceso a la carpeta."
+            val isNetwork = error.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED ||
+                error.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT ||
+                error.errorCode == PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS
+            val net = connectivity.state.value
+            offlineError = isNetwork || (isRemote(active.currentMediaItem) && !net.online)
+            PlaybackEvents.error.value = when {
+                offlineError -> "Se perdió la conexión. La canción continuará cuando vuelva el Internet."
+                isRemote(active.currentMediaItem) -> "El servidor de la canción no respondió (${error.errorCodeName}). Intenta otra calidad u otra canción."
+                else -> "No se pudo reproducir este archivo (${error.errorCodeName}). Comprueba el formato y el acceso a la carpeta."
+            }
         }
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             if (swapping) return
@@ -260,6 +282,7 @@ class PlaybackService : MediaSessionService() {
         if (player === active) applyVolume(player, 1f)
     }
     private fun isOriginal(item: MediaItem) = item.mediaMetadata.extras?.getBoolean("original") == true
+    private fun isRemote(item: MediaItem?): Boolean = item?.mediaMetadata?.extras?.getString("uri")?.startsWith("http") == true
     private fun startOf(item: MediaItem): Long = if (isOriginal(item)) 0 else
         cues[item.mediaId]?.offset(app.preferences.state.value.detectSilence) ?: item.offsetMs
     private fun endOf(item: MediaItem): Long? = if (cues.containsKey(item.mediaId)) cues[item.mediaId]?.playbackEndMs else item.selectedEndMs
@@ -282,7 +305,8 @@ class PlaybackService : MediaSessionService() {
         PlaybackEvents.analyzing.value = item.mediaId
         resolveJob = scope.launch {
             try {
-                val track = if (isOriginal(item)) app.library.track(item.mediaId) else app.analysis.resolve(item.mediaId)
+                val stored = app.library.track(item.mediaId)
+                val track = if (isOriginal(item) || stored?.source == "online") stored else app.analysis.resolve(item.mediaId)
                 if (generation != resolveGeneration || active !== player) return@launch
                 if (track != null) cues[item.mediaId] = track
                 preparedIds += item.mediaId
@@ -307,7 +331,8 @@ class PlaybackService : MediaSessionService() {
         prefetchId = item.mediaId
         prefetchJob = scope.launch {
             try {
-                val track = if (isOriginal(item)) app.library.track(item.mediaId) else app.analysis.resolve(item.mediaId)
+                val stored = app.library.track(item.mediaId)
+                val track = if (isOriginal(item) || stored?.source == "online") stored else app.analysis.resolve(item.mediaId)
                 if (track != null) cues[item.mediaId] = track
                 preparedIds += item.mediaId
             } catch (e: CancellationException) { throw e }
@@ -356,6 +381,7 @@ class PlaybackService : MediaSessionService() {
     override fun onDestroy() {
         normalizer.release()
         dynamics.release()
+        connectivity.stop()
         savePosition(); ++resolveGeneration; scope.cancel(); PlaybackEvents.analyzing.value = null
         session?.release(); session = null
         active.release(); incoming.release()

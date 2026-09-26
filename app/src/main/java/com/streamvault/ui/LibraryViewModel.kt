@@ -19,6 +19,12 @@ import com.streamvault.analysis.SilenceAnalyzer
 import com.streamvault.data.*
 import com.streamvault.playback.*
 import com.streamvault.scanner.ScanWorker
+import com.streamvault.flac.AudioFormatReader
+import com.streamvault.network.ConnectivityMonitor
+import com.streamvault.network.NetState
+import com.streamvault.online.OnlineRepository
+import com.streamvault.online.OnlineResult
+import com.streamvault.online.Quality
 import com.streamvault.playback.CompressorPreset
 import com.streamvault.update.ReleaseInfo
 import com.streamvault.update.UpdateInstaller
@@ -58,6 +64,12 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
     val busy = MutableStateFlow(false)
     val updateState = MutableStateFlow<UpdateState>(UpdateState.Idle)
     val updates = UpdateManager(application)
+    val online = OnlineRepository(app)
+    private val connectivity = ConnectivityMonitor(app)
+    val net: StateFlow<NetState> get() = connectivity.state
+    val onlineResults = MutableStateFlow<List<OnlineResult>>(emptyList())
+    val onlineSearching = MutableStateFlow(false)
+    val onlineError = MutableStateFlow<String?>(null)
     val roots = MutableStateFlow(app.preferences.roots().toList())
     val playback = MutableStateFlow(PlaybackState())
     val mixing = PlaybackEvents.mixing
@@ -76,6 +88,7 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
         }
     }
     init {
+        connectivity.start()
         UpdateInstaller.register(app)
         viewModelScope.launch {
             UpdateInstaller.status.collect { status ->
@@ -168,6 +181,41 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
         val cover = withContext(Dispatchers.IO) { app.artwork.import(track.id, uri) } ?: error("La imagen no es compatible")
         dao.track(track.id)?.let { dao.update(it.copy(cover = cover)) }
     }
+    /** Online search and playback through the provider interface. */
+    fun searchOnline(query: String) {
+        val clean = query.trim()
+        if (clean.length < 2) return
+        viewModelScope.launch {
+            onlineSearching.value = true
+            onlineError.value = null
+            runCatching { online.search(clean) }
+                .onSuccess { results ->
+                    onlineResults.value = results
+                    if (results.isEmpty()) onlineError.value = "Sin resultados en el catálogo libre para \"$clean\". Prueba con el artista o con otra palabra."
+                }
+                .onFailure { onlineError.value = it.localizedMessage ?: "No se pudo buscar en Internet" }
+            onlineSearching.value = false
+        }
+    }
+
+    private fun wantedQuality(): Quality = Quality.values().firstOrNull { it.key == settings.value.onlineQuality } ?: Quality.AUTO
+
+    /** The whole result page becomes the queue, so next and previous keep working online. */
+    fun playOnline(result: OnlineResult) = task {
+        val quality = wantedQuality()
+        val context = onlineResults.value.take(30).mapNotNull { item -> runCatching { online.track(item, quality, net.value) }.getOrNull() }
+        val track = online.track(result, quality, net.value)
+        play(track, (listOf(track) + context).distinctBy { it.id })
+    }
+
+    fun enqueueOnline(result: OnlineResult, next: Boolean = false) = task {
+        val track = online.track(result, wantedQuality(), net.value)
+        enqueue(track, next)
+    }
+
+    /** Reads the real format of a local file (FLAC, bit depth, sample rate) for the player badge. */
+    suspend fun formatOf(track: com.streamvault.data.Track) = AudioFormatReader.read(app, track.uri)
+
     /** Measures this song only, so a single quiet track can be levelled without re-analyzing everything. */
     fun measureLoudness(track: Track) = task {
         val result = withContext(Dispatchers.IO) { LoudnessAnalyzer(app).measure(track.uri, track.offset(settings.value.detectSilence)) }

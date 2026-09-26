@@ -22,6 +22,7 @@ import com.streamvault.R
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import com.streamvault.analysis.AnalysisWorker
+import com.streamvault.online.Quality
 import com.streamvault.playback.CompressorPreset
 import com.streamvault.playback.PlaybackEvents
 import com.streamvault.scanner.ScanWorker
@@ -102,6 +103,15 @@ fun SettingsScreen(vm: LibraryViewModel, permission: () -> Unit, folder: () -> U
                 } catch (_: Exception) { vm.notify("Este dispositivo no ofrece un ecualizador compatible") }
             })
             UpdateSection(vm)
+            item {
+                SectionTitle("Datos y calidad")
+                Toggle("Usar datos móviles", "Reproducir música online con la red del operador", settings.mobileData) { value -> update { it.copy(mobileData = value) } }
+                Toggle("Solo Wi‑Fi", "No consumir datos móviles en ninguna calidad", settings.wifiOnly) { value -> update { it.copy(wifiOnly = value) } }
+                Setting("Calidad online", Quality.values().firstOrNull { it.key == settings.onlineQuality }?.label ?: "Automática", { choose = "Calidad online" })
+                Text("Automática elige FLAC o la mejor calidad con Wi‑Fi, una calidad media con datos móviles y la más baja en conexiones lentas. "
+                    + "Tus archivos FLAC locales se reproducen tal cual, sin convertirlos, incluso sin Internet.",
+                    fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 6.dp))
+            }
             SectionTitle("Respaldo")
             Setting("Guardar mis ajustes", "Exporta la configuración a un archivo que puedes conservar", { backup.launch("ajustes-reproductor-denilson.json") })
             Setting("Restaurar mis ajustes", "Recupera la configuración desde un respaldo anterior", { restore.launch(arrayOf("application/json", "text/*")) })
@@ -121,6 +131,7 @@ fun SettingsScreen(vm: LibraryViewModel, permission: () -> Unit, folder: () -> U
             "Silencio mínimo" -> listOf(0, 1, 2, 3, 5).map { it.toString() to "$it segundos" }
             "Nivel objetivo" -> listOf(-22, -20, -18, -16, -14, -12).map { it.toString() to "$it dBFS RMS" }
             "Compresor" -> CompressorPreset.ALL.map { it.key to it.label }
+            "Calidad online" -> Quality.values().map { it.key to it.label }
             else -> listOf("system" to "Automático según el sistema", "dark" to "Oscuro", "light" to "Claro")
         }
         AlertDialog(onDismissRequest = { choose = "" }, title = { Text(choose) }, text = {
@@ -130,7 +141,7 @@ fun SettingsScreen(vm: LibraryViewModel, permission: () -> Unit, folder: () -> U
                     "Crossfade" -> old.copy(crossfade = key.toInt()); "Saltar ± segundos" -> old.copy(skipSeconds = key.toInt())
                     "Repetición" -> old.copy(repeat = key.toInt()); "Sensibilidad" -> old.copy(thresholdDb = key.toInt())
                     "Silencio mínimo" -> old.copy(minimumSilence = key.toInt()); "Nivel objetivo" -> old.copy(targetLoudnessDb = key.toInt())
-                    "Compresor" -> old.copy(compressor = key); else -> old.copy(theme = key)
+                    "Compresor" -> old.copy(compressor = key); "Calidad online" -> old.copy(onlineQuality = key); else -> old.copy(theme = key)
                 } }
                 if (reanalyze && vm.settings.value.detectSilence) AnalysisWorker.enqueue(context)
                 choose = ""

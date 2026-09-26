@@ -35,7 +35,10 @@ object SettingsBackup {
         Triple("dynamicColor", "dynamicColor", Kind.BOOL),
         Triple("normalize", "normalize", Kind.BOOL),
         Triple("targetLoudnessDb", "targetLoudness", Kind.INT),
-        Triple("compressor", "compressor", Kind.STRING)
+        Triple("compressor", "compressor", Kind.STRING),
+        Triple("onlineQuality", "onlineQuality", Kind.STRING),
+        Triple("mobileData", "mobileData", Kind.BOOL),
+        Triple("wifiOnly", "wifiOnly", Kind.BOOL)
     )
 
     fun fieldNames(): List<String> = FIELDS.map { it.first }
@@ -62,6 +65,9 @@ object SettingsBackup {
         put("normalize", settings.normalize)
         put("targetLoudnessDb", settings.targetLoudnessDb)
         put("compressor", settings.compressor)
+        put("onlineQuality", settings.onlineQuality)
+        put("mobileData", settings.mobileData)
+        put("wifiOnly", settings.wifiOnly)
     }.toString()
 
     fun isBackup(text: String): Boolean = runCatching {

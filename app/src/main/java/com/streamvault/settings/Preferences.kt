@@ -24,7 +24,10 @@ data class PlayerSettings(
     val dynamicColor: Boolean = true,
     val normalize: Boolean = true,
     val targetLoudnessDb: Int = -16,
-    val compressor: String = "balanced"
+    val compressor: String = "balanced",
+    val onlineQuality: String = "auto",
+    val mobileData: Boolean = true,
+    val wifiOnly: Boolean = false
 ) { val analysisKey get() = "rms-v3:$thresholdDb:$minimumSilence" }
 
 class Preferences(context: Context) {
@@ -44,7 +47,10 @@ class Preferences(context: Context) {
         dynamicColor = prefs.getBoolean("dynamicColor", true),
         normalize = prefs.getBoolean("normalize", true),
         targetLoudnessDb = prefs.getInt("targetLoudness", -16),
-        compressor = prefs.getString("compressor", "balanced")!!
+        compressor = prefs.getString("compressor", "balanced")!!,
+        onlineQuality = prefs.getString("onlineQuality", "auto")!!,
+        mobileData = prefs.getBoolean("mobileData", true),
+        wifiOnly = prefs.getBoolean("wifiOnly", false)
     )
     fun update(change: (PlayerSettings) -> PlayerSettings) {
         val s = change(mutable.value)
@@ -55,7 +61,8 @@ class Preferences(context: Context) {
             .putBoolean("covers", s.largeCovers).putString("excluded", s.excludedFolders)
             .putBoolean("autoUpdate", s.autoUpdate).putBoolean("dynamicColor", s.dynamicColor)
             .putBoolean("normalize", s.normalize).putInt("targetLoudness", s.targetLoudnessDb)
-            .putString("compressor", s.compressor).apply()
+            .putString("compressor", s.compressor).putString("onlineQuality", s.onlineQuality)
+            .putBoolean("mobileData", s.mobileData).putBoolean("wifiOnly", s.wifiOnly).apply()
         mutable.value = s
     }
     fun roots(): Set<String> = prefs.getStringSet("roots", emptySet())!!.toSet()
