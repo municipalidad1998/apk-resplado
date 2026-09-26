@@ -138,12 +138,10 @@ fun TrackActions(vm: LibraryViewModel, initialTrack: Track, dismiss: () -> Unit)
 @Composable
 private fun Info(label: String, value: String) { Column { Text(label, fontSize = 10.sp, color = MaterialTheme.colorScheme.primary); Spacer(Modifier.height(4.dp)); Text(value, fontSize = 13.sp) } }
 
-@Composable
 private fun yearToMillis(value: String): Long {
-    val year = value.toIntOrNull() ?: return -1L
-    return java.util.Calendar.getInstance().apply { clear(); set(java.util.Calendar.YEAR, year) }.timeInMillis
 }
 
+@Composable
 private fun EditTrack(track: Track, dismiss: () -> Unit, save: (String, String, String, String, String, String, String, Long, Int, Int) -> Unit) {
     var name by remember { mutableStateOf(track.customName) }; var title by remember { mutableStateOf(track.title) }
     var artist by remember { mutableStateOf(track.artist) }; var album by remember { mutableStateOf(track.album) }

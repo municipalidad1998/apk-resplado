@@ -273,8 +273,8 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
     /** Measures this song only, so a single quiet track can be levelled without re-analyzing everything. */
     fun measureLoudness(track: Track) = task {
         val result = withContext(Dispatchers.IO) { LoudnessAnalyzer(app).measure(track.uri, track.offset(settings.value.detectSilence)) }
-        dao.loudness(track.id, result.rmsDb)
-        notify("Volumen medido: %.1f dBFS. Se nivelará con el resto de tu música.".format(result.rmsDb))
+        dao.loudness(track.id, result.lufs, result.peakDb)
+        notify("Loudness medido: %.1f LUFS · pico %.1f dBTP. Se nivelará con el resto de tu música.".format(result.lufs, result.peakDb))
     }
 
     fun analyze(track: Track) = task {

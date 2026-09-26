@@ -20,8 +20,8 @@ import com.streamvault.data.Track
 fun LibraryScreen(vm: LibraryViewModel, search: Boolean, permission: () -> Unit, folder: () -> Unit, menu: (Track) -> Unit) {
     val songs = vm.tracks.collectAsLazyPagingItems()
     val ranked by vm.ranked.collectAsStateWithLifecycle()
-    val searching = query.trim().length >= 2
     val query by vm.query.collectAsStateWithLifecycle()
+    val searching = query.trim().length >= 2
     val filter by vm.filter.collectAsStateWithLifecycle()
     val count by vm.count.collectAsStateWithLifecycle()
     val current by vm.current.collectAsStateWithLifecycle()

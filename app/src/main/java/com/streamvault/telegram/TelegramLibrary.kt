@@ -56,7 +56,9 @@ object TelegramImport {
             val message = messages.optJSONObject(index) ?: continue
             if (message.optString("type") != "message") continue
             val file = message.optString("file")
-            val name = file.substringAfterLast('/').ifBlank { continue }
+            if (file.isBlank()) continue
+            val name = file.substringAfterLast('/')
+            if (name.isBlank()) continue
             val isAudio = message.optString("media_type") == "audio_file" ||
                 message.optString("mime_type").startsWith("audio") ||
                 name.substringAfterLast('.').lowercase() in AUDIO_EXTENSIONS
