@@ -21,7 +21,8 @@ class QualityChooserTest {
 
     @Test fun automaticPicksByConnection() {
         assertEquals(flac, choose(Quality.AUTO, wifi))
-        assertEquals(mp3High, choose(Quality.AUTO, mobile))
+        // "Normal" is the highest compressed stream up to 256 kbps, not the 320 kbps one.
+        assertEquals(ogg, choose(Quality.AUTO, mobile))
         assertEquals(mp3Low, choose(Quality.AUTO, slow))
     }
 

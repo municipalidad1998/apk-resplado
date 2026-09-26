@@ -29,7 +29,7 @@ class ArchiveProviderTest {
     }
 
     @Test fun buildsHumanTitlesFromFileNames() {
-        assertEquals("Imagine Dragons Believer", provider.prettyTitle("Imagine_Dragons_-_Believer.mp3"))
+        assertEquals("Imagine Dragons - Believer", provider.prettyTitle("Imagine_Dragons_-_Believer.mp3"))
         assertEquals("Concierto 01", provider.prettyTitle("folder/Concierto 01.flac"))
     }
 
@@ -40,10 +40,34 @@ class ArchiveProviderTest {
               {"identifier":"netlabel-ep","title":["Netlabel EP"],"creator":["Some Artist","Other"],"downloads":10}
             ]}}
         """.trimIndent()
-        val items = provider.searchItems("grateful", 5)
-        // No network in unit tests: the call must fail gracefully and return nothing.
-        assertTrue(items.isEmpty())
-        assertEquals("response", org.json.JSONObject(json).keys().next())
+        val items = provider.parseSearch(json)
+        assertEquals(2, items.size)
+        // Most downloaded first, and arrays are unwrapped to their first value.
+        assertEquals("gd1977-05-08", items[0].identifier)
+        assertEquals("Grateful Dead", items[0].creator)
+        assertEquals("Some Artist", items[1].creator)
+        assertEquals("Netlabel EP", items[1].title)
+    }
+
+    @Test fun parsesAnItemIntoStreams() {
+        val json = """
+            {"metadata":{"licenseurl":"https://creativecommons.org/licenses/by/4.0/"},"files":[
+              {"name":"cover.jpg","format":"JPEG","size":"1000"},
+              {"name":"track1.flac","format":"Flac","size":"30000000","length":"254.5","bitrate":"4608000"},
+              {"name":"track1.mp3","format":"128Kbps MP3","size":"4000000","length":"254.5","bitrate":"128000"},
+              {"name":"tiny.mp3","format":"VBR MP3","length":"4"}
+            ]}
+        """.trimIndent()
+        val item = ArchiveProvider.ArchiveItem("item", "Álbum", "Autor", "2020", "Rock", 5)
+        val results = provider.parseItem(item, json)
+        assertEquals(2, results.size) // the artwork and the 4 second file are dropped
+        assertEquals("track1", results[0].title)
+        assertEquals("Autor", results[0].artist)
+        assertEquals("Álbum", results[0].album)
+        assertEquals(254.5f, results[0].durationSeconds, 0.01f)
+        assertEquals(StreamFormat.FLAC, results[0].streams.first().format)
+        assertTrue(results[0].streams.first().url.startsWith("https://archive.org/download/item/"))
+        assertTrue(results[0].license.contains("creativecommons"))
     }
 
     @Test fun expandsAnItemIntoPlayableTracks() {

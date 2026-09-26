@@ -76,9 +76,18 @@ jobs:
           for file in files:
               root = ET.parse(file).getroot()
               for key in totals: totals[key] += int(root.get(key, 0))
+          failures = []
+          for file in files:
+              root = ET.parse(file).getroot()
+              for case in root.iter('testcase'):
+                  for kind in ('failure', 'error'):
+                      for node in case.findall(kind):
+                          failures.append(case.get('classname', '?') + '.' + case.get('name', '?') + ': ' + (node.get('message') or '')[:300])
           with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as out:
               out.write('## JVM tests\n' + str(totals) + '\n')
           print('::notice::JVM tests: ' + str(totals))
+          for line in failures[:30]:
+              print('::error::' + line.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A'))
           PYTEST
       - uses: actions/upload-artifact@v4
         if: always()

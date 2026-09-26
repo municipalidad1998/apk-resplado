@@ -38,6 +38,11 @@ class ArchiveProvider : OnlineProvider {
             "&fl%5B%5D=identifier&fl%5B%5D=title&fl%5B%5D=creator&fl%5B%5D=year&fl%5B%5D=downloads&fl%5B%5D=subject" +
             "&rows=$rows&page=1&output=json"
         val body = get(url) ?: return emptyList()
+        return parseSearch(body)
+    }
+
+    /** Pure parsing of the search response, kept separate so it can be tested without network. */
+    internal fun parseSearch(body: String): List<ArchiveItem> {
         val docs = JSONObject(body).optJSONObject("response")?.optJSONArray("docs") ?: return emptyList()
         val list = mutableListOf<ArchiveItem>()
         for (index in 0 until docs.length()) {
@@ -58,6 +63,11 @@ class ArchiveProvider : OnlineProvider {
 
     internal fun expand(item: ArchiveItem): List<OnlineResult> {
         val body = get("https://archive.org/metadata/${item.identifier}") ?: return emptyList()
+        return parseItem(item, body)
+    }
+
+    /** Pure parsing of one item's metadata, also testable without network. */
+    internal fun parseItem(item: ArchiveItem, body: String): List<OnlineResult> {
         val root = JSONObject(body)
         val metadata = root.optJSONObject("metadata")
         val license = metadata?.optString("licenseurl").orEmpty()
