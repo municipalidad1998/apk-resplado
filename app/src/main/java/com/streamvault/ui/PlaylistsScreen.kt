@@ -24,7 +24,9 @@ import com.streamvault.data.*
 
 @Composable
 fun PlaylistsScreen(vm: LibraryViewModel, menu: (Track) -> Unit, library: () -> Unit) {
-    val lists by vm.playlists.collectAsStateWithLifecycle()
+    val all by vm.playlists.collectAsStateWithLifecycle()
+    var kind by remember { mutableStateOf("") }
+    val lists = remember(all, kind) { if (kind.isBlank()) all else all.filter { it.kind == kind } }
     var selectedId by remember { mutableStateOf<String?>(null) }
     val selected = lists.find { it.id == selectedId }
     var create by remember { mutableStateOf(false) }
@@ -39,9 +41,20 @@ fun PlaylistsScreen(vm: LibraryViewModel, menu: (Track) -> Unit, library: () -> 
         item {
             if (selected != null) TextButton(onClick = { selectedId = null }) { Icon(Icons.Rounded.ArrowBack, null); Text(" Playlists") }
             PageHeader("EL SONIDO DE TUS MOMENTOS", selected?.name ?: "Tus playlists", selected?.description ?: "Colecciones con tu propia personalidad.")
-            if (selected == null) Button(onClick = { create = true }) { Icon(Icons.Rounded.Add, null); Text(" Crear playlist") }
+            if (selected == null) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = { create = true }) { Icon(Icons.Rounded.Add, null); Text(" Crear playlist") }
+                }
+                // Local, online and mixed are three different things: never merged into one list.
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 8.dp)) {
+                    items(listOf("" to "Todas", Playlist.KIND_LOCAL to "Locales", Playlist.KIND_ONLINE to "Online", Playlist.KIND_MIXED to "Mixtas")) { (value, label) ->
+                        FilterChip(selected = kind == value, onClick = { kind = value }, label = { Text(label) })
+                    }
+                }
+            }
             else {
                 Cover(selected.id, selected.name, selected.cover, Modifier.size(156.dp).clickable { cover.launch(arrayOf("image/*")) })
+                KindBadge(selected.kind)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     Button(onClick = { tracks.firstOrNull()?.let { vm.play(it, tracks) } }, enabled = tracks.isNotEmpty()) { Icon(Icons.Rounded.PlayArrow, null); Text("Escuchar") }
                     ActionIcon(Icons.Rounded.Add, "Agregar canciones", { add = true })
@@ -58,7 +71,11 @@ fun PlaylistsScreen(vm: LibraryViewModel, menu: (Track) -> Unit, library: () -> 
             items(lists, key = { it.id }) { playlist ->
                 Row(Modifier.fillMaxWidth().clickable { selectedId = playlist.id }.padding(vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
                     Cover(playlist.id, playlist.name, playlist.cover, Modifier.size(72.dp))
-                    Column(Modifier.weight(1f).padding(horizontal = 16.dp)) { Text(playlist.name, fontWeight = FontWeight.SemiBold); Text(playlist.description.ifBlank { "Tu selección personal" }, maxLines = 2, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    Column(Modifier.weight(1f).padding(horizontal = 16.dp)) {
+                        Text(playlist.name, fontWeight = FontWeight.SemiBold)
+                        Text(playlist.description.ifBlank { "Tu selección personal" }, maxLines = 2, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        KindBadge(playlist.kind)
+                    }
                     Icon(Icons.Rounded.ChevronRight, null)
                 }
             }
@@ -79,8 +96,19 @@ fun PlaylistsScreen(vm: LibraryViewModel, menu: (Track) -> Unit, library: () -> 
         create = false; edit = false
     }
     if (add && selected != null) TrackPicker(vm, "Agregar a ${selected.name}", { add = false }) { vm.addToPlaylist(it, selected) }
+
     if (delete && selected != null) AlertDialog(onDismissRequest = { delete = false }, title = { Text("¿Eliminar playlist?") }, text = { Text("Solo se eliminará la lista. Tus archivos y canciones permanecerán en la biblioteca.") },
         confirmButton = { TextButton(onClick = { vm.deletePlaylist(selected); selectedId = null; delete = false }) { Text("Eliminar") } }, dismissButton = { TextButton(onClick = { delete = false }) { Text("Cancelar") } })
+}
+
+@Composable
+private fun KindBadge(kind: String) {
+    val (label, icon) = when (kind) {
+        Playlist.KIND_ONLINE -> "Online · Internet" to Icons.Rounded.Cloud
+        Playlist.KIND_MIXED -> "Mixta · teléfono + Internet" to Icons.Rounded.Shuffle
+        else -> "Local · en tu teléfono" to Icons.Rounded.Smartphone
+    }
+    AssistChip(onClick = {}, leadingIcon = { Icon(icon, null, Modifier.size(14.dp)) }, label = { Text(label, fontSize = 10.sp) }, modifier = Modifier.height(24.dp))
 }
 
 @Composable

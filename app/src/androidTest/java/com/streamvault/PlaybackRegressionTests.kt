@@ -135,7 +135,7 @@ class PlaybackRegressionTests {
         raw.execSQL("DROP TABLE room_master_table")
         raw.version = 2; raw.close()
         val upgraded = Room.databaseBuilder(app, LibraryDatabase::class.java, name)
-            .addMigrations(LibraryDatabase.MIGRATION_1_2, LibraryDatabase.MIGRATION_2_3, LibraryDatabase.MIGRATION_3_4).build()
+            .addMigrations(LibraryDatabase.MIGRATION_1_2, LibraryDatabase.MIGRATION_2_3, LibraryDatabase.MIGRATION_3_4, LibraryDatabase.MIGRATION_4_5).build()
         try {
             val track = upgraded.library().track("kept")!!
             assertNull(track.loudnessDb)
@@ -165,13 +165,15 @@ class PlaybackRegressionTests {
         raw.version = 1; raw.close()
         // The app registers every step (1->2->3); a real update from the oldest schema needs them all.
         val upgraded = Room.databaseBuilder(app, LibraryDatabase::class.java, name)
-            .addMigrations(LibraryDatabase.MIGRATION_1_2, LibraryDatabase.MIGRATION_2_3, LibraryDatabase.MIGRATION_3_4).build()
+            .addMigrations(LibraryDatabase.MIGRATION_1_2, LibraryDatabase.MIGRATION_2_3, LibraryDatabase.MIGRATION_3_4, LibraryDatabase.MIGRATION_4_5).build()
         try {
             assertTrue(upgraded.library().track("kept")!!.favorite)
             assertEquals(11000L, upgraded.library().track("kept")!!.manualOffsetMs)
             assertNull(upgraded.library().track("kept")!!.playbackEndMs)
             assertNull(upgraded.library().track("kept")!!.loudnessDb)
             assertEquals(1, upgraded.library().getPlaylistTracks("list").size)
+            // The upgrade adds the local/online/mixed kind without touching a single song.
+            assertEquals(Playlist.KIND_LOCAL, upgraded.library().playlistsList().first { it.id == "list" }.kind)
         } finally { upgraded.close(); app.deleteDatabase(name) }
     }
 }

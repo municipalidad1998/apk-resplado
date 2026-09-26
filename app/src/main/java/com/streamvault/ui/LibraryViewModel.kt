@@ -22,6 +22,13 @@ import com.streamvault.playback.*
 import com.streamvault.scanner.ScanWorker
 import com.streamvault.flac.AudioFormatReader
 import com.streamvault.search.SmartSearch
+import com.streamvault.search.MusicSearchEngine
+import com.streamvault.search.SearchOutcome
+import com.streamvault.search.SearchTab
+import com.streamvault.provider.LocalMusicProvider
+import com.streamvault.provider.MusicSource
+import com.streamvault.provider.OnlineMusicProvider
+import com.streamvault.provider.SearchHit
 import com.streamvault.telegram.TelegramRepository
 import com.streamvault.network.ConnectivityMonitor
 import com.streamvault.network.NetState
@@ -49,7 +56,7 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
     val whatsapp = dao.source("whatsapp").stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val instrumentals = dao.source("instrumental").stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val added = dao.added().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-    val count = dao.count().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+    val count = dao.localCount().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
     val playlists = dao.playlists().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val folders = dao.folders().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val artists = dao.artists().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -72,11 +79,13 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
     private val connectivity = ConnectivityMonitor(app)
     val telegram = TelegramRepository(app)
     val net: StateFlow<NetState> get() = connectivity.state
-    val onlineResults = MutableStateFlow<List<OnlineResult>>(emptyList())
-    val localResults = MutableStateFlow<List<Track>>(emptyList())
     val ranked = MutableStateFlow<List<Track>>(emptyList())
-    val onlineSearching = MutableStateFlow(false)
-    val onlineError = MutableStateFlow<String?>(null)
+    /** Unified search: one outcome, two lists that are never merged. */
+    val searchQuery = MutableStateFlow("")
+    val searchTab = MutableStateFlow(SearchTab.PHONE)
+    val outcome = MutableStateFlow(SearchOutcome())
+    val searching = MutableStateFlow(false)
+    val engine = MusicSearchEngine(LocalMusicProvider(app), OnlineMusicProvider(online) { net.value })
     val roots = MutableStateFlow(app.preferences.roots().toList())
     val playback = MutableStateFlow(PlaybackState())
     val mixing = PlaybackEvents.mixing
@@ -98,6 +107,11 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
         connectivity.start()
         viewModelScope.launch {
             query.debounce(220).collect { text -> ranked.value = runCatching { searchLocal(text) }.getOrDefault(emptyList()) }
+        }
+        viewModelScope.launch {
+            searchQuery.debounce(350).collect { text ->
+                if (text.trim().length >= 2) runSearch(text) else { outcome.value = SearchOutcome(text); searching.value = false }
+            }
         }
         UpdateInstaller.register(app)
         viewModelScope.launch {
@@ -194,30 +208,38 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
             albumArtist = albumArtist.trim()))
         notify("Información guardada sin modificar el archivo")
     }
-    /** Ranked search: an exact artist + title always beats a partial coincidence. */
-    suspend fun searchLocal(query: String): List<Track> {
-        val clean = query.trim()
-        if (clean.length < 2) return emptyList()
-        val tokens = SmartSearch.normalize(clean).split(' ').filter { it.length > 1 }.distinct().take(6)
-        if (tokens.isEmpty()) return emptyList()
-        val where = tokens.joinToString(" OR ") {
-            "(title LIKE ? ESCAPE '\\' OR customName LIKE ? ESCAPE '\\' OR artist LIKE ? ESCAPE '\\' OR album LIKE ? ESCAPE '\\' OR genre LIKE ? ESCAPE '\\' OR fileName LIKE ? ESCAPE '\\')"
-        }
-        val args = tokens.flatMap { token -> List(6) { "%${token.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")}%" } }
-        val sql = "SELECT * FROM tracks WHERE hidden = 0 AND available = 1 AND ($where) LIMIT 600"
-        val rows = withContext(Dispatchers.IO) {
-            dao.candidates(androidx.sqlite.db.SimpleSQLiteQuery(sql, args.toTypedArray()))
-        }
-        return SmartSearch.rankItems(rows, clean) { track ->
-            SmartSearch.Candidate(track.id, track.displayName, track.artist, track.album, track.source, track.plays, track.durationMs)
+    /** Ranked search over the phone library. Offline, and only files that really exist. */
+    suspend fun searchLocal(query: String): List<Track> =
+        engine.localHits(query).mapNotNull { it.track }
+
+    /**
+     * The phone first, then the internet. Each source keeps its own list: an online song is never
+     * presented as a local file, and a local file is never replaced by a stream.
+     */
+    fun search(text: String) { searchQuery.value = text }
+
+    private fun runSearch(text: String) {
+        viewModelScope.launch {
+            searching.value = true
+            outcome.value = engine.search(text).copy(searching = true)
+            searching.value = false
+            outcome.value = outcome.value.copy(searching = false)
         }
     }
 
-    /** Ranks what the provider returned with the same rules used for the local library. */
-    fun rankOnline(results: List<com.streamvault.online.OnlineResult>, query: String): List<com.streamvault.online.OnlineResult> =
-        SmartSearch.rankItems(results, query) { result ->
-            SmartSearch.Candidate(result.id, result.title, result.artist, result.album, result.source, 0, (result.durationSeconds * 1000).toLong())
-        }
+    /** Plays an online hit, keeping the whole online list as the queue so next/previous work. */
+    fun playOnline(hit: SearchHit) = task {
+        val result = hit.online ?: error("Este resultado ya no está disponible")
+        playOnline(result, outcome.value.online)
+    }
+
+    /** Adds an online song to a playlist without downloading it or touching the phone library. */
+    fun addOnlineTo(hit: SearchHit, playlist: Playlist) = task {
+        val result = hit.online ?: error("Este resultado ya no está disponible")
+        val track = online.track(result, wantedQuality(), net.value)
+        dao.addToPlaylist(playlist.id, track.id)
+        notify("Agregada a ${playlist.name} · suena por Internet, no se descarga al teléfono")
+    }
 
     fun importTelegram(uri: Uri) = task {
         val text = withContext(Dispatchers.IO) {
@@ -256,9 +278,9 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
     private fun wantedQuality(): Quality = Quality.values().firstOrNull { it.key == settings.value.onlineQuality } ?: Quality.AUTO
 
     /** The whole result page becomes the queue, so next and previous keep working online. */
-    fun playOnline(result: OnlineResult) = task {
+    fun playOnline(result: OnlineResult, contextHits: List<SearchHit> = outcome.value.online) = task {
         val quality = wantedQuality()
-        val context = onlineResults.value.take(30).mapNotNull { item -> runCatching { online.track(item, quality, net.value) }.getOrNull() }
+        val context = contextHits.take(30).mapNotNull { item -> item.online?.let { runCatching { online.track(it, quality, net.value) }.getOrNull() } }
         val track = online.track(result, quality, net.value)
         play(track, (listOf(track) + context).distinctBy { it.id })
     }
@@ -325,7 +347,7 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
     }
     fun playlistTracks(id: String) = dao.playlistTracks(id)
     fun addToPlaylist(track: Track, playlist: Playlist) = task { dao.addToPlaylist(playlist.id, track.id); notify("Agregada a ${playlist.name}") }
-    fun removeFromPlaylist(track: Track, playlist: Playlist) = task { dao.removeEntry(playlist.id, track.id) }
+    fun removeFromPlaylist(track: Track, playlist: Playlist) = task { dao.detach(playlist.id, track.id) }
     fun reorderPlaylist(playlist: Playlist, tracks: List<Track>) = task { dao.reorderPlaylist(playlist.id, tracks.map { it.id }) }
     fun deletePlaylist(playlist: Playlist) = task { dao.deletePlaylist(playlist.id) }
     fun enqueuePlaylist(playlist: Playlist) = task { controller?.addMediaItems(dao.getPlaylistTracks(playlist.id).map { it.mediaItem(settings.value) }); notify("Playlist agregada a la cola") }

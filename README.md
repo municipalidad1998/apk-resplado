@@ -1,5 +1,6 @@
 # Reproductor de música Denilson
 
+**Versión 2.7.0:** [motor de búsqueda propio con relevancia real, bibliotecas local y online separadas y playlists por tipo](docs/ANALISIS_REFERENCIA_Y_BUSQUEDA.md).
 **Versión 2.6.0:** [buscador inteligente con prioridad exacta, loudness BS.1770 con límite de pico, FLAC con datos reales y música de Telegram](docs/BUSQUEDA_LOUDNESS_Y_METADATOS.md).
 **Versión 2.5.0:** [música online con proveedor intercambiable, calidad según la conexión y FLAC](docs/MUSICA_ONLINE_Y_FLAC.md).
 **Versión 2.4.0:** [compresor ajustable, instalación de actualizaciones sin errores y respaldo de la configuración](docs/COMPRESOR_Y_ACTUALIZACIONES.md).
@@ -12,13 +13,15 @@ favoritos, playlists y notificación.
 No es una web empaquetada y no inserta anuncios propios. Al abrirlo por primera vez, la biblioteca
 local estará vacía hasta que autorices el acceso a tu música o elijas una carpeta.
 
-## APK verificado — Reproductor de música Denilson 2.6.0
+## APK verificado — Reproductor de música Denilson 2.7.0
 
-**[Descargar el APK](https://github.com/municipalidad1998/apk-resplado/releases/download/v2.6.0/reproductor-denilson-2.6.0.apk)** · [Página del release](https://github.com/municipalidad1998/apk-resplado/releases/tag/v2.6.0)
+**[Descargar el APK](https://github.com/municipalidad1998/apk-resplado/releases/download/v2.7.0/reproductor-denilson-2.7.0.apk)** · [Página del release](https://github.com/municipalidad1998/apk-resplado/releases/tag/v2.7.0)
 
-Build del código `83ddd04`: **78/78 pruebas JVM, Android Lint, compilación y 10/10 pruebas instrumentadas en Android 15**. Se instala encima de la versión anterior sin desinstalar (misma firma) y la app lo detecta en **Ajustes → Actualizaciones**.
+Se instala **encima** de la versión anterior sin desinstalar: mismo paquete (`com.streamvault`),
+misma clave de firma y `versionCode` mayor. La app lo detecta en **Ajustes → Actualizaciones**.
+Detalles en [docs/FIRMA_Y_ACTUALIZACIONES.md](docs/FIRMA_Y_ACTUALIZACIONES.md).
 
-### Límites reales de la versión 2.6.0
+### Límites reales de la versión 2.7.0
 
 - **La música online es de catálogo libre** (Internet Archive). No es el catálogo comercial: los éxitos de las grandes discográficas sólo se pueden escuchar en el reproductor oficial de YouTube o pagando licencias.
 - **YouTube:** el botón abre la búsqueda en la **app oficial**. No bloquea anuncios ni reproduce YouTube en segundo plano: eso depende de YouTube Premium y sus términos.

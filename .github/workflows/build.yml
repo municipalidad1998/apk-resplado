@@ -155,46 +155,44 @@ jobs:
       - name: Name the installable APK
         run: |
           mkdir -p release
-          cp apks/app/app-debug.apk release/reproductor-denilson-2.6.0.apk
+          cp apks/app/app-debug.apk release/reproductor-denilson-2.7.0.apk
           ls -l release
       - uses: softprops/action-gh-release@v2
         with:
-          tag_name: v2.6.0
-          name: Reproductor de música Denilson 2.6.0
+          tag_name: v2.7.0
+          name: Reproductor de música Denilson 2.7.0
           body: |
-            APK generado y verificado por este flujo (78 pruebas JVM, Lint y 10 pruebas
-            instrumentadas en Android 15). Mantiene la misma firma que la versión anterior,
-            así que se actualiza sin desinstalar y sin perder la biblioteca.
+            APK generada y verificada por este flujo (pruebas JVM, Lint y pruebas instrumentadas en
+            Android 15). Mantiene el mismo paquete (`com.streamvault`) y la misma firma que la
+            versión anterior, así que se instala encima sin desinstalar y sin perder la biblioteca.
 
-            Instalación: descarga `reproductor-denilson-2.6.0.apk` y ábrelo en el teléfono.
-            La primera vez Android pedirá autorizar "Instalar apps desconocidas". Después, la app
-            misma instala las siguientes versiones desde Ajustes → Actualizaciones.
+            Instalación: descarga `reproductor-denilson-2.7.0.apk` y ábrelo en el teléfono. La primera
+            vez Android pedirá autorizar "Instalar apps desconocidas". Después, la app misma instala
+            las siguientes versiones desde Ajustes → Actualizaciones.
 
             Novedades:
 
-            - Buscador inteligente: la coincidencia exacta de artista y título va primero y ningún
-              resultado aleatorio se cuela por encima. Acepta acentos, mayúsculas, alias y errores
-              de escritura. Busca primero en tu teléfono y después en Internet.
-            - Normalización de loudness real con BS.1770 (curva K, bloques de 400 ms, doble
-              compuerta y pico verdadero de 4x). Objetivo -16, -14, -12 LUFS o personalizado
-              entre -24 y -6; la ganancia se limita a -1 dBTP para no distorsionar. No toca el
-              archivo: el reproductor muestra loudness medido, pico y ganancia aplicada.
-            - Crossfade desactivado o de 2, 4, 6, 8, 10 segundos, y ahora también personalizado
-              de 0 a 30 segundos.
-            - Detección local con metadatos completos: título, artista, álbum, artista del álbum,
-              género, año, pista, disco y carátula. Si algo falta, edítalo a mano desde la
-              canción. Los resultados de búsqueda llevan artista, título, álbum, duración,
-              carátula y origen.
-            - Música de Telegram: importa el respaldo exportado por Telegram y guarda su id de
-              mensaje, id de archivo, nombre, artista, álbum, duración, tamaño y hash en SQLite,
-              vinculándolo con tu copia local cuando existe.
+            - Buscador reescrito con motor propio de relevancia. La coincidencia exacta de artista o de
+              título va primero y, cuando el artista existe, no se muestra nada de otros artistas:
+              "Alex Campos" ya no devuelve Alexander, ni canciones que solo dicen "Alex"; "La IBI"
+              reconoce a la artista con o sin artículo y descarta parecidos como "IBI Town" o "IBIS".
+            - Dos bibliotecas independientes. "Música del teléfono" contiene solo archivos que existen
+              físicamente; "Música online" solo lo que llega por Internet. Nunca se mezclan y ninguna
+              canción online se convierte en archivo local.
+            - Pestañas [TELÉFONO] [ONLINE] [TODOS] en el buscador. TODOS muestra los dos bloques
+              separados, cada uno con su distintivo de origen (📱 local / 🌐 Internet).
+            - Validación de metadatos online: ningún resultado se muestra sin título, stream,
+              duración, carátula y origen verificados.
+            - Playlists locales, online y mixtas, con filtro y distintivo por tipo. Agregar una
+              canción online a una playlist no la descarga: sigue sonando por Internet.
+            - Sin conexión, el buscador sigue funcionando con tu música del teléfono y avisa
+              "Sin conexión a Internet" solo en la parte online.
 
-            Limitación honesta sobre Telegram: la app registra y organiza esos archivos, pero
-            todavía no reproduce directamente desde los servidores de Telegram; para eso haría
-            falta un cliente MTProto con tus propias credenciales de API. Si borras el archivo
-            del PC, la entrada queda en el registro pero no sonará hasta que vuelvas a tenerlo.
+            Recordatorio sobre actualizaciones: el paquete es siempre `com.streamvault` y la firma es
+            siempre la misma clave, por eso puedes instalar esta APK sobre la anterior. El detalle
+            está en docs/FIRMA_Y_ACTUALIZACIONES.md.
 
             YouTube: el botón abre la búsqueda en la app oficial de YouTube. La app no bloquea
             anuncios ni reproduce YouTube en segundo plano; eso depende de YouTube Premium.
-          files: release/reproductor-denilson-2.6.0.apk
+          files: release/reproductor-denilson-2.7.0.apk
           fail_on_unmatched_files: true

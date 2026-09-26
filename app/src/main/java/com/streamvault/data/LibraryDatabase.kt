@@ -52,7 +52,11 @@ data class Track(
 data class AudioLocation(@PrimaryKey val uri: String, val trackId: String, val root: String,
                          val size: Long, val modified: Long, val seen: String)
 @Entity(tableName = "playlists")
-data class Playlist(@PrimaryKey val id: String, val name: String, val description: String = "", val cover: String? = null)
+data class Playlist(@PrimaryKey val id: String, val name: String, val description: String = "", val cover: String? = null,
+                    /** "local": solo archivos del teléfono. "online": solo Internet. "mixed": las dos. */
+                    val kind: String = "local") {
+    companion object { const val KIND_LOCAL = "local"; const val KIND_ONLINE = "online"; const val KIND_MIXED = "mixed" }
+}
 @Entity(tableName = "playlist_entries", primaryKeys = ["playlistId", "trackId"],
     foreignKeys = [ForeignKey(entity = Playlist::class, parentColumns = ["id"], childColumns = ["playlistId"], onDelete = ForeignKey.CASCADE),
         ForeignKey(entity = Track::class, parentColumns = ["id"], childColumns = ["trackId"], onDelete = ForeignKey.CASCADE)],
@@ -73,19 +77,20 @@ data class QueueRecord(val id: String, val uri: String, val title: String, val a
 
 @Dao
 interface LibraryDao {
-    @Query("SELECT * FROM tracks WHERE hidden = 0 AND available = 1 AND (:sort != 'recent' OR lastPlayed > 0) AND (:source = '' OR source = :source) AND (:favorite = 0 OR favorite = 1) AND (:folder = '' OR folder = :folder) AND (:artist = '' OR artist = :artist) AND (:album = '' OR album = :album) AND (:genre = '' OR genre = :genre) AND (title LIKE :query ESCAPE '\\' OR customName LIKE :query ESCAPE '\\' OR artist LIKE :query ESCAPE '\\' OR album LIKE :query ESCAPE '\\' OR genre LIKE :query ESCAPE '\\' OR folder LIKE :query ESCAPE '\\' OR tags LIKE :query ESCAPE '\\' OR fileName LIKE :query ESCAPE '\\') ORDER BY CASE WHEN :sort = 'recent' THEN lastPlayed WHEN :sort = 'added' THEN addedAt ELSE 0 END DESC, title COLLATE NOCASE")
+    @Query("SELECT * FROM tracks WHERE hidden = 0 AND available = 1 AND (:sort != 'recent' OR lastPlayed > 0) AND (:source = '' OR source = :source) AND (:favorite = 0 OR favorite = 1) AND (:folder = '' OR folder = :folder) AND (:artist = '' OR artist = :artist) AND (:album = '' OR album = :album) AND (:genre = '' OR genre = :genre) AND source != 'online' AND (title LIKE :query ESCAPE '\\' OR customName LIKE :query ESCAPE '\\' OR artist LIKE :query ESCAPE '\\' OR album LIKE :query ESCAPE '\\' OR genre LIKE :query ESCAPE '\\' OR folder LIKE :query ESCAPE '\\' OR tags LIKE :query ESCAPE '\\' OR fileName LIKE :query ESCAPE '\\') ORDER BY CASE WHEN :sort = 'recent' THEN lastPlayed WHEN :sort = 'added' THEN addedAt ELSE 0 END DESC, title COLLATE NOCASE")
     fun page(query: String, source: String, favorite: Boolean, folder: String, artist: String, album: String, genre: String, sort: String): PagingSource<Int, Track>
-    @Query("SELECT id, uri, title, artist, album, durationMs, cover, customName, detectedOffsetMs, manualOffsetMs, playbackEndMs, crossfadeSeconds, loudnessDb, peakDb FROM tracks WHERE hidden = 0 AND available = 1 AND (:sort != 'recent' OR lastPlayed > 0) AND (:source = '' OR source = :source) AND (:favorite = 0 OR favorite = 1) AND (:folder = '' OR folder = :folder) AND (:artist = '' OR artist = :artist) AND (:album = '' OR album = :album) AND (:genre = '' OR genre = :genre) AND (title LIKE :query ESCAPE '\\' OR customName LIKE :query ESCAPE '\\' OR artist LIKE :query ESCAPE '\\' OR album LIKE :query ESCAPE '\\' OR genre LIKE :query ESCAPE '\\' OR folder LIKE :query ESCAPE '\\' OR tags LIKE :query ESCAPE '\\' OR fileName LIKE :query ESCAPE '\\') ORDER BY CASE WHEN :sort = 'recent' THEN lastPlayed WHEN :sort = 'added' THEN addedAt ELSE 0 END DESC, title COLLATE NOCASE")
+    @Query("SELECT id, uri, title, artist, album, durationMs, cover, customName, detectedOffsetMs, manualOffsetMs, playbackEndMs, crossfadeSeconds, loudnessDb, peakDb FROM tracks WHERE hidden = 0 AND available = 1 AND (:sort != 'recent' OR lastPlayed > 0) AND (:source = '' OR source = :source) AND (:favorite = 0 OR favorite = 1) AND (:folder = '' OR folder = :folder) AND (:artist = '' OR artist = :artist) AND (:album = '' OR album = :album) AND (:genre = '' OR genre = :genre) AND source != 'online' AND (title LIKE :query ESCAPE '\\' OR customName LIKE :query ESCAPE '\\' OR artist LIKE :query ESCAPE '\\' OR album LIKE :query ESCAPE '\\' OR genre LIKE :query ESCAPE '\\' OR folder LIKE :query ESCAPE '\\' OR tags LIKE :query ESCAPE '\\' OR fileName LIKE :query ESCAPE '\\') ORDER BY CASE WHEN :sort = 'recent' THEN lastPlayed WHEN :sort = 'added' THEN addedAt ELSE 0 END DESC, title COLLATE NOCASE")
     suspend fun playbackQueue(query: String, source: String, favorite: Boolean, folder: String, artist: String, album: String, genre: String, sort: String): List<QueueRecord>
-    @Query("SELECT * FROM tracks WHERE hidden = 0 AND available = 1 ORDER BY lastPlayed DESC, addedAt DESC LIMIT 20")
+    @Query("SELECT * FROM tracks WHERE hidden = 0 AND available = 1 AND source != 'online' ORDER BY lastPlayed DESC, addedAt DESC LIMIT 20")
     fun home(): Flow<List<Track>>
     @Query("SELECT * FROM tracks WHERE hidden = 0 AND available = 1 AND favorite = 1 ORDER BY title LIMIT 20")
     fun favorites(): Flow<List<Track>>
     @Query("SELECT * FROM tracks WHERE hidden = 0 AND available = 1 AND source = :source ORDER BY addedAt DESC LIMIT 20")
     fun source(source: String): Flow<List<Track>>
-    @Query("SELECT * FROM tracks WHERE hidden = 0 AND available = 1 ORDER BY addedAt DESC LIMIT 20")
+    @Query("SELECT * FROM tracks WHERE hidden = 0 AND available = 1 AND source != 'online' ORDER BY addedAt DESC LIMIT 20")
     fun added(): Flow<List<Track>>
     @Query("SELECT COUNT(*) FROM tracks WHERE hidden = 0 AND available = 1") fun count(): Flow<Int>
+    @Query("SELECT COUNT(*) FROM tracks WHERE hidden = 0 AND available = 1 AND source != 'online'") fun localCount(): Flow<Int>
     @Query("SELECT * FROM tracks WHERE id = :id") suspend fun track(id: String): Track?
     @Query("SELECT * FROM tracks WHERE id = :id") fun observeTrack(id: String): Flow<Track?>
     @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun insert(track: Track): Long
@@ -119,11 +124,12 @@ interface LibraryDao {
     @Query("SELECT * FROM locations WHERE trackId = :id") suspend fun locations(id: String): List<AudioLocation>
     @Query("UPDATE tracks SET available = CASE WHEN source = 'online' THEN 1 ELSE EXISTS(SELECT 1 FROM locations WHERE trackId = tracks.id) END, uri = CASE WHEN source = 'online' THEN uri ELSE COALESCE((SELECT uri FROM locations WHERE trackId = tracks.id LIMIT 1), uri) END")
     suspend fun reconcile()
-    @Query("SELECT DISTINCT folder FROM tracks WHERE hidden = 0 AND available = 1 ORDER BY folder") fun folders(): Flow<List<String>>
-    @Query("SELECT DISTINCT artist FROM tracks WHERE hidden = 0 AND available = 1 ORDER BY artist") fun artists(): Flow<List<String>>
-    @Query("SELECT DISTINCT album FROM tracks WHERE hidden = 0 AND available = 1 ORDER BY album") fun albums(): Flow<List<String>>
-    @Query("SELECT DISTINCT genre FROM tracks WHERE hidden = 0 AND available = 1 ORDER BY genre") fun genres(): Flow<List<String>>
+    @Query("SELECT DISTINCT folder FROM tracks WHERE hidden = 0 AND available = 1 AND source != 'online' ORDER BY folder") fun folders(): Flow<List<String>>
+    @Query("SELECT DISTINCT artist FROM tracks WHERE hidden = 0 AND available = 1 AND source != 'online' ORDER BY artist") fun artists(): Flow<List<String>>
+    @Query("SELECT DISTINCT album FROM tracks WHERE hidden = 0 AND available = 1 AND source != 'online' ORDER BY album") fun albums(): Flow<List<String>>
+    @Query("SELECT DISTINCT genre FROM tracks WHERE hidden = 0 AND available = 1 AND source != 'online' ORDER BY genre") fun genres(): Flow<List<String>>
     @Query("SELECT * FROM playlists ORDER BY name") fun playlists(): Flow<List<Playlist>>
+    @Query("SELECT * FROM playlists ORDER BY name") suspend fun playlistsList(): List<Playlist>
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun playlist(playlist: Playlist)
     @Query("DELETE FROM playlists WHERE id = :id") suspend fun deletePlaylist(id: String)
     @Query("SELECT tracks.* FROM tracks INNER JOIN playlist_entries ON tracks.id = trackId WHERE playlistId = :id AND hidden = 0 AND available = 1 ORDER BY position")
@@ -134,7 +140,27 @@ interface LibraryDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun entry(entry: PlaylistEntry)
     @Query("DELETE FROM playlist_entries WHERE playlistId = :playlist AND trackId = :track") suspend fun removeEntry(playlist: String, track: String)
     @Query("DELETE FROM playlist_entries WHERE playlistId = :id") suspend fun clearPlaylist(id: String)
-    @Transaction suspend fun addToPlaylist(playlist: String, track: String) { entry(PlaylistEntry(playlist, track, nextPosition(playlist))) }
+    @Transaction suspend fun addToPlaylist(playlist: String, track: String) {
+        entry(PlaylistEntry(playlist, track, nextPosition(playlist)))
+        refreshKind(playlist)
+    }
+
+    /** Removing a song can turn a mixed playlist back into a local one. */
+    @Transaction suspend fun detach(playlist: String, track: String) {
+        removeEntry(playlist, track)
+        refreshKind(playlist)
+    }
+
+    /**
+     * The kind is derived from the songs it holds, never guessed: a playlist is online only if
+     * every song comes from the internet, mixed when it has both, local when all are files.
+     */
+    @Query("UPDATE playlists SET kind = CASE " +
+        "WHEN EXISTS(SELECT 1 FROM playlist_entries e INNER JOIN tracks t ON t.id = e.trackId WHERE e.playlistId = :id AND t.source = 'online') " +
+        "AND EXISTS(SELECT 1 FROM playlist_entries e INNER JOIN tracks t ON t.id = e.trackId WHERE e.playlistId = :id AND t.source != 'online') THEN 'mixed' " +
+        "WHEN EXISTS(SELECT 1 FROM playlist_entries e INNER JOIN tracks t ON t.id = e.trackId WHERE e.playlistId = :id AND t.source = 'online') THEN 'online' " +
+        "ELSE 'local' END WHERE id = :id")
+    suspend fun refreshKind(id: String)
     @Transaction suspend fun reorderPlaylist(id: String, tracks: List<String>) {
         clearPlaylist(id); tracks.forEachIndexed { i, t -> entry(PlaylistEntry(id, t, i)) }
     }
@@ -145,7 +171,7 @@ interface LibraryDao {
     @Transaction suspend fun saveQueue(ids: List<String>) { clearQueue(); queue(ids.mapIndexed { i, id -> QueueEntry(i, id) }) }
 }
 
-@Database(entities = [Track::class, AudioLocation::class, Playlist::class, PlaylistEntry::class, QueueEntry::class, com.streamvault.telegram.TelegramFile::class], version = 4, exportSchema = true)
+@Database(entities = [Track::class, AudioLocation::class, Playlist::class, PlaylistEntry::class, QueueEntry::class, com.streamvault.telegram.TelegramFile::class], version = 5, exportSchema = true)
 abstract class LibraryDatabase : RoomDatabase() {
     abstract fun library(): LibraryDao
     abstract fun telegram(): com.streamvault.telegram.TelegramDao
@@ -168,6 +194,13 @@ abstract class LibraryDatabase : RoomDatabase() {
                 addColumn(db, "tracks", "discNumber", "INTEGER NOT NULL DEFAULT 0")
                 addColumn(db, "tracks", "albumArtist", "TEXT")
                 db.execSQL("CREATE TABLE IF NOT EXISTS telegram_files (messageId INTEGER NOT NULL PRIMARY KEY, fileId TEXT NOT NULL, name TEXT NOT NULL, artist TEXT NOT NULL, album TEXT NOT NULL, durationMs INTEGER NOT NULL, size INTEGER NOT NULL, hash TEXT NOT NULL, trackId TEXT, date INTEGER NOT NULL)")
+            }
+        }
+
+        val MIGRATION_4_5 = object : androidx.room.migration.Migration(4, 5) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                // Playlists remember whether they hold phone files, online songs or both.
+                addColumn(db, "playlists", "kind", "TEXT NOT NULL DEFAULT 'local'")
             }
         }
 

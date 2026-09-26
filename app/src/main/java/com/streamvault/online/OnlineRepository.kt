@@ -19,6 +19,9 @@ class OnlineRepository(private val app: LuminaApp) {
         return providers.firstOrNull { it.canStream }?.search(clean, limit).orEmpty()
     }
 
+    /** Name of the provider that served a result, so the row can say where it comes from. */
+    fun labelOf(key: String): String = providers.firstOrNull { it.key == key }?.label ?: "Internet"
+
     /**
      * Resolves a result into a playable track and stores it. Online tracks keep
      * `source = "online"` so the scanner never marks them as missing files.
