@@ -170,7 +170,7 @@ private fun EditTrack(track: Track, dismiss: () -> Unit, save: (String, String, 
             OutlinedTextField(tags, { tags = it }, label = { Text("Etiquetas") })
             OutlinedTextField(notes, { notes = it }, label = { Text("Descripción / notas") })
         }
-    }, confirmButton = { TextButton(onClick = confirm) { Text("Guardar") } }, dismissButton = { TextButton(onClick = dismiss) { Text("Cancelar") } }))
+    }, confirmButton = { TextButton(onClick = confirm) { Text("Guardar") } }, dismissButton = { TextButton(onClick = dismiss) { Text("Cancelar") } })
 }
 
 @Composable
