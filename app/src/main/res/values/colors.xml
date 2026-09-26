@@ -13,17 +13,21 @@
     <color name="tab_normal">#2A2A3A</color>
     <color name="live_badge">#FF3B3B</color>
     <color name="transparent">#00000000</color>
-    <!-- Paleta premium "Denilson" -->
-    <color name="den_bg">#0B0B10</color>
-    <color name="den_surface_1">#14141C</color>
-    <color name="den_surface_2">#1C1C28</color>
-    <color name="den_surface_3">#262636</color>
+
+    <!-- ══ Sistema de diseño "Denilson" — premium oscuro ══ -->
+    <color name="den_bg">#09090E</color>
+    <color name="den_surface_1">#121218</color>
+    <color name="den_surface_2">#1B1B24</color>
+    <color name="den_surface_3">#252532</color>
+    <color name="den_surface_border">#2E2E3E</color>
     <color name="den_accent">#8A7CFF</color>
-    <color name="den_accent_soft">#2A2640</color>
-    <color name="den_text">#F5F5FA</color>
-    <color name="den_text_dim">#9C9CB4</color>
-    <color name="den_text_muted">#5A5A70</color>
+    <color name="den_accent_dim">#4D4575</color>
+    <color name="den_accent_soft">#232037</color>
+    <color name="den_text">#FAFAFF</color>
+    <color name="den_text_dim">#A2A2BA</color>
+    <color name="den_text_muted">#5F5F74</color>
     <color name="den_online">#34D399</color>
     <color name="den_warn">#FBBF24</color>
     <color name="den_offline">#F87171</color>
+    <color name="den_ripple">#228A7CFF</color>
 </resources>

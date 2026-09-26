@@ -78,6 +78,7 @@ class PlayerMusicActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        overridePendingTransition(R.anim.slide_up, R.anim.fade_in_fast)
         setContentView(R.layout.activity_player_music)
 
         queue = intent.getParcelableArrayListExtra<LocalSong>(EXTRA_QUEUE)
@@ -97,7 +98,7 @@ class PlayerMusicActivity : AppCompatActivity() {
         btnPlay = findViewById(R.id.btnPlayPause)
         btnShuffle = findViewById(R.id.btnShuffle)
         btnRepeat = findViewById(R.id.btnRepeat)
-        findViewById<View>(R.id.btnClosePlayer).setOnClickListener { finish() }
+        findViewById<View>(R.id.btnClosePlayer).setOnClickListener { finishWithSlide() }
 
         btnFav = findViewById(R.id.btnFav)
         btnFav.setOnClickListener {
@@ -271,6 +272,11 @@ class PlayerMusicActivity : AppCompatActivity() {
         }
     }
 
+    private fun finishWithSlide() {
+        finish()
+        if (!reduceAnimations()) overridePendingTransition(R.anim.fade_in_fast, R.anim.slide_down)
+    }
+
     private fun reduceAnimations(): Boolean =
         getSharedPreferences("app_settings", MODE_PRIVATE).getBoolean("reduce_animations", false)
 
@@ -285,6 +291,13 @@ class PlayerMusicActivity : AppCompatActivity() {
         tvTitle.text = s.title
         tvArtist.text = "${s.artist} · ${s.album}"
         Glide.with(this).load(s.albumArtUri)
+            .apply(
+                com.bumptech.glide.request.RequestOptions()
+                    .transform(
+                        com.bumptech.glide.load.resource.bitmap.CenterCrop(),
+                        com.bumptech.glide.load.resource.bitmap.RoundedCorners(28)
+                    )
+            )
             .placeholder(R.drawable.logo_circle_bg)
             .error(R.drawable.logo_circle_bg).into(ivCover)
         // Historial + estado del corazón
