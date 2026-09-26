@@ -11,7 +11,9 @@ import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import com.streamvault.BuildConfig
+import kotlinx.coroutines.launch
 import com.streamvault.R
 import com.streamvault.playback.LoudnessNormalizer
 import com.streamvault.web.AdBlocker
@@ -83,13 +85,31 @@ class SettingsActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.tvCurrentVersion).text =
             "Versión actual: ${BuildConfig.VERSION_NAME} (código ${BuildConfig.VERSION_CODE})"
         findViewById<Button>(R.id.btnCheckUpdate).setOnClickListener {
-            // Mecanismo estándar de Android: misma applicationId + mismo
-            // certificado + versionCode mayor = actualización directa.
-            Toast.makeText(
-                this,
-                "Sin actualizaciones disponibles.\nInstala la nueva APK encima: se actualizará sin perder datos.",
-                Toast.LENGTH_LONG
-            ).show()
+            val btn = it as Button
+            btn.isEnabled = false
+            btn.text = "Buscando…"
+            lifecycleScope.launch {
+                val update = com.streamvault.update.UpdateManager.checkForUpdate(this@SettingsActivity)
+                btn.isEnabled = true
+                btn.text = "Buscar actualización"
+                if (update == null) {
+                    Toast.makeText(this@SettingsActivity, "Ya tienes la última versión (${BuildConfig.VERSION_NAME})", Toast.LENGTH_LONG).show()
+                } else {
+                    androidx.appcompat.app.AlertDialog.Builder(this@SettingsActivity)
+                        .setTitle("🔄 Nueva versión ${update.versionName}")
+                        .setMessage(
+                            "Versión actual: ${BuildConfig.VERSION_NAME}\n" +
+                            "Cambios: ${update.notes}\n" +
+                            if (update.sizeBytes > 0) "Tamaño: ${update.sizeBytes / 1024 / 1024} MB\n" else "" +
+                            "\nSe instala encima sin perder tus datos."
+                        )
+                        .setPositiveButton("Actualizar") { _, _ ->
+                            com.streamvault.update.UpdateManager.downloadAndInstall(this@SettingsActivity, update)
+                        }
+                        .setNegativeButton("Después", null)
+                        .show()
+                }
+            }
         }
     }
 }

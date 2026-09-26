@@ -26,9 +26,10 @@ interface SourcesDao {
     entities = [
         Channel::class, SavedSource::class,
         PlaylistEntity::class, PlaylistTrackEntity::class,
-        MusicFavoriteEntity::class, PlayHistoryEntity::class
+        MusicFavoriteEntity::class, PlayHistoryEntity::class,
+        TelegramFileEntity::class, TelegramChunkEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -37,6 +38,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun playlistDao(): PlaylistDao
     abstract fun musicFavoritesDao(): MusicFavoritesDao
     abstract fun historyDao(): HistoryDao
+    abstract fun telegramFilesDao(): TelegramFilesDao
 
     companion object {
         /**
@@ -89,6 +91,37 @@ abstract class AppDatabase : RoomDatabase() {
                         `progressMs` INTEGER NOT NULL,
                         `durationMs` INTEGER NOT NULL)"""
                 )
+            }
+        }
+
+        /** Migración 2 → 3: tablas de Telegram Cloud (archivos + fragmentos). */
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """CREATE TABLE IF NOT EXISTS `telegram_files` (
+                        `fileUid` TEXT PRIMARY KEY NOT NULL,
+                        `originalName` TEXT NOT NULL,
+                        `localPath` TEXT,
+                        `category` TEXT NOT NULL,
+                        `sizeBytes` INTEGER NOT NULL,
+                        `sha256` TEXT NOT NULL,
+                        `chatId` INTEGER NOT NULL,
+                        `uploadedAt` INTEGER NOT NULL,
+                        `deletedFromLocal` INTEGER NOT NULL DEFAULT 0)"""
+                )
+                db.execSQL(
+                    """CREATE TABLE IF NOT EXISTS `telegram_chunks` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `fileUid` TEXT NOT NULL,
+                        `chunkIndex` INTEGER NOT NULL,
+                        `telegramMessageId` INTEGER NOT NULL,
+                        `telegramFileId` TEXT NOT NULL,
+                        `sha256` TEXT NOT NULL,
+                        `sizeBytes` INTEGER NOT NULL,
+                        `uploaded` INTEGER NOT NULL DEFAULT 0,
+                        FOREIGN KEY(`fileUid`) REFERENCES `telegram_files`(`fileUid`) ON DELETE CASCADE)"""
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_telegram_chunks_fileUid` ON `telegram_chunks` (`fileUid`)")
             }
         }
     }
