@@ -73,8 +73,9 @@ object UpdateParser {
 
     private fun numbers(version: String): List<Int> {
         val cleaned = version.trim().trimStart('v', 'V').trimEnd('.')
+        if (cleaned.isBlank()) return emptyList()
         return cleaned.split('.').mapNotNull { part ->
-            part.takeWhile { it.isDigit() }.toIntOrNull()
-        }.ifEmpty { listOf(0) }
+            part.takeWhile { it.isDigit() }.takeIf { digits -> digits.isNotEmpty() }?.toIntOrNull()
+        }
     }
 }
