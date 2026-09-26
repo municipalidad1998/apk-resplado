@@ -37,7 +37,10 @@ class NavigationTests {
         compose.onNodeWithText("Guardar").performClick()
         compose.waitUntil(5000) { compose.onAllNodesWithText("Lista de prueba de navegación").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("Lista de prueba de navegación").performClick()
-        compose.onNodeWithText("0 canciones · 0:00").performScrollTo().assertIsDisplayed()
+        // The detail view replaces the list: wait for its own actions before asserting on it.
+        compose.waitUntil(5000) { compose.onAllNodesWithContentDescription("Eliminar playlist").fetchSemanticsNodes().isNotEmpty() }
+        compose.waitUntil(5000) { compose.onAllNodesWithText("0 canciones · 0:00").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("0 canciones · 0:00").assertIsDisplayed()
         compose.onNodeWithContentDescription("Eliminar playlist").performClick()
         compose.onNodeWithText("Eliminar").performClick()
         compose.onNodeWithText("Tus playlists").assertIsDisplayed()
