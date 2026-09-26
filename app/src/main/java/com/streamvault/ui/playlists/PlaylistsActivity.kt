@@ -1,5 +1,6 @@
 package com.streamvault.ui.playlists
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -46,11 +47,7 @@ class PlaylistsActivity : AppCompatActivity() {
                 lifecycleScope.launch {
                     dao.bySource(source).collectLatest { list ->
                         rv.adapter = PlaylistAdapter(list) { playlist ->
-                            Toast.makeText(
-                                this@PlaylistsActivity,
-                                "Playlist \"${playlist.name}\" (${playlist.source})",
-                                Toast.LENGTH_SHORT
-                            ).show()
+                            openPlaylist(playlist)
                         }
                         findViewById<TextView>(R.id.tvEmptyPlaylists).visibility =
                             if (list.isEmpty()) View.VISIBLE else View.GONE
@@ -75,6 +72,39 @@ class PlaylistsActivity : AppCompatActivity() {
                 }
                 .setNegativeButton("Cancelar", null)
                 .show()
+        }
+    }
+
+    /** Abre la playlist y reproduce sus pistas (solo fuente LOCAL). */
+    private fun openPlaylist(playlist: PlaylistEntity) {
+        lifecycleScope.launch {
+            dao.tracks(playlist.id).collectLatest { tracks ->
+                if (playlist.source != "LOCAL") {
+                    Toast.makeText(this@PlaylistsActivity,
+                        "Playlist ${playlist.name}: ${tracks.size} elementos (${playlist.source})",
+                        Toast.LENGTH_SHORT).show()
+                    return@collectLatest
+                }
+                if (tracks.isEmpty()) {
+                    Toast.makeText(this@PlaylistsActivity, "Playlist vacía", Toast.LENGTH_SHORT).show()
+                    return@collectLatest
+                }
+                val songs = tracks.map { t ->
+                    com.streamvault.data.local.LocalSong(
+                        id = 0, title = t.title, artist = t.artist ?: "Desconocido", album = "",
+                        duration = t.duration, contentUri = t.uri, albumArtUri = t.artUri
+                    )
+                }
+                startActivity(
+                    Intent(this@PlaylistsActivity, com.streamvault.ui.music.PlayerMusicActivity::class.java).apply {
+                        putParcelableArrayListExtra(
+                            com.streamvault.ui.music.PlayerMusicActivity.EXTRA_QUEUE, ArrayList(songs)
+                        )
+                        putExtra(com.streamvault.ui.music.PlayerMusicActivity.EXTRA_INDEX, 0)
+                    }
+                )
+                return@collectLatest
+            }
         }
     }
 
