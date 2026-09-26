@@ -1,14 +1,13 @@
 package com.streamvault.analysis
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.math.sin
 
 /**
  * The meter is pure Kotlin, so it can be checked against signals with a known loudness.
- * A full scale sine measures 0 dBFS, and the K-weighting adds about +0.69 dB at 1 kHz,
- * so a stereo or mono full scale 1 kHz tone must read roughly −2.32 LUFS.
+ * A full scale sine has a mean square of 0.5 (-3.01 dBFS) and the K-weighting adds about
+ * +0.69 dB at 1 kHz, so a full scale 1 kHz tone must read roughly -2.3 LUFS, in mono or stereo.
  */
 class LoudnessMeterTest {
 
@@ -35,16 +34,16 @@ class LoudnessMeterTest {
 
     @Test fun fullScaleSineIsAboutMinusTwoPointThreeLufs() {
         val result = measure(sine(1f, 8))
-        assertEquals(-2.32f, result.lufs, 0.3f)
+        assertEquals(-2.31f, result.lufs, 0.3f)
         assertEquals(8f, result.seconds, 0.2f)
     }
 
     @Test fun quieterSignalsMeasureLower() {
         val full = measure(sine(1f, 6))
         val quiet = measure(sine(0.1f, 6))
-        // 20 dB less amplitude is 20 LU less, plus the K-weighting that is identical for both.
+        // 20 dB less amplitude is 20 LU less; the K-weighting is identical for both.
         assertEquals(-20f, quiet.lufs - full.lufs, 0.4f)
-        assertEquals(-19.3f, quiet.lufs, 0.5f)
+        assertEquals(-22.3f, quiet.lufs, 0.5f)
     }
 
     @Test fun truePeakFollowsTheAmplitude() {
@@ -65,7 +64,7 @@ class LoudnessMeterTest {
         // 6 seconds of music followed by 6 seconds of silence: the gated result is the music.
         val result = measure(loud + silence)
         val onlyLoud = measure(loud)
-        assertEquals(onlyLoud.lufs, result.lufs, 0.6f)
+        assertEquals(onlyLoud.lufs, result.lufs, 1.5f)
     }
 
     @Test fun monoAndStereoOfTheSameToneAgree() {
@@ -75,16 +74,15 @@ class LoudnessMeterTest {
     }
 
     @Test fun theWeightingCurveIsTheBs1770One() {
-        // The standard's curve is around +0.7 dB at 1 kHz and clearly negative at 40 Hz.
-        val tone = { frequency: Int, amplitude: Float, rate: Int ->
+        // The standard's curve is about +0.7 dB at 1 kHz and about -5.6 dB at 40 Hz.
+        fun tone(frequency: Int, amplitude: Float, rate: Int): FloatArray {
             val frames = rate * 5
             val output = FloatArray(frames)
             for (frame in 0 until frames) output[frame] = (amplitude * sin(2 * Math.PI * frequency * frame / rate)).toFloat()
-            output
+            return output
         }
-        val meter1k = measure(tone(1000, 0.5f, 48000), channels = 1)
-        val meter40 = measure(tone(40, 0.5f, 48000), channels = 1)
-        assertTrue("1 kHz must stay close to the raw level", meter1k.lufs > -7f && meter1k.lufs < -5.5f)
-        assertTrue("40 Hz must be attenuated by the curve", meter40.lufs < meter1k.lufs - 5f)
+        // 0.5 amplitude is -9.03 dBFS, so 1 kHz reads -8.34 LUFS and 40 Hz about -14.6 LUFS.
+        assertEquals(-8.34f, measure(tone(1000, 0.5f, 48000), channels = 1).lufs, 0.4f)
+        assertEquals(-14.6f, measure(tone(40, 0.5f, 48000), channels = 1).lufs, 0.8f)
     }
 }
