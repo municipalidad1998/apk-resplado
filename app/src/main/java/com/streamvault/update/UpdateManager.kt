@@ -90,19 +90,14 @@ class UpdateManager(private val context: Context) {
     /**
      * Android refuses an update signed with a different key. Detecting it before showing the
      * installer lets us warn the user instead of failing with a cryptic system message.
+     * Returns null when the comparison is not possible on this device.
      */
+    @Suppress("DEPRECATION")
     fun signatureMatches(file: File): Boolean? = runCatching {
-        val archived = context.packageManager.getPackageArchiveInfo(file.absolutePath, PackageManager.GET_SIGNING_CERTIFICATES) ?: return null
-        val installed = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-            context.packageManager.getPackageInfo(context.packageName, PackageManager.GET_SIGNING_CERTIFICATES)
-        } else {
-            @Suppress("DEPRECATION")
-            context.packageManager.getPackageInfo(context.packageName, PackageManager.GET_SIGNATURES)
-        }
-        val mine = installed.signingInfo?.signingCertificateHistory?.map { it.toCharsString() }?.toSet()
-            ?: @Suppress("DEPRECATION") installed.signatures?.map { it.toCharsString() }?.toSet().orEmpty()
-        val theirs = archived.signingInfo?.signingCertificateHistory?.map { it.toCharsString() }?.toSet()
-            ?: @Suppress("DEPRECATION") archived.signatures?.map { it.toCharsString() }?.toSet().orEmpty()
+        val archived = context.packageManager.getPackageArchiveInfo(file.absolutePath, PackageManager.GET_SIGNATURES)?.signatures
+        val installed = context.packageManager.getPackageInfo(context.packageName, PackageManager.GET_SIGNATURES).signatures
+        val mine = installed?.map { it.toCharsString() }?.toSet().orEmpty()
+        val theirs = archived?.map { it.toCharsString() }?.toSet().orEmpty()
         if (mine.isEmpty() || theirs.isEmpty()) null else mine.intersect(theirs).isNotEmpty()
     }.getOrNull()
 
