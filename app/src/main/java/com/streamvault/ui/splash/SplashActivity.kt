@@ -9,7 +9,7 @@ import android.view.animation.AnimationUtils
 import androidx.appcompat.app.AppCompatActivity
 import com.streamvault.R
 import com.streamvault.databinding.ActivitySplashBinding
-import com.streamvault.ui.home.MainActivity
+import com.streamvault.ui.hub.HomeHubActivity
 
 class SplashActivity : AppCompatActivity() {
     private lateinit var binding: ActivitySplashBinding
@@ -38,7 +38,7 @@ class SplashActivity : AppCompatActivity() {
         binding.progressSplash.animate().alpha(1f).setDuration(300).setStartDelay(1500).start()
 
         Handler(Looper.getMainLooper()).postDelayed({
-            startActivity(Intent(this, MainActivity::class.java))
+            startActivity(Intent(this, HomeHubActivity::class.java))
             overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
             finish()
         }, 3000)
