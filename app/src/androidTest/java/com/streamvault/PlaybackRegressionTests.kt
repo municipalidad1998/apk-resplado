@@ -111,11 +111,13 @@ class PlaybackRegressionTests {
         val file = wav("regression-loudness.wav", 20, 0)
         try {
             val measured = withContext(Dispatchers.IO) { com.streamvault.analysis.LoudnessAnalyzer(app).measure(android.net.Uri.fromFile(file).toString()) }
-            // 9000/32768 sine: peak about -11.2 dBFS, RMS about -14.2 dBFS.
-            assertEquals(-14.2f, measured.rmsDb, 1.5f)
-            assertTrue(measured.rmsDb > LoudnessMath.SILENCE_DB)
-            assertEquals(0, LoudnessMath.boostMillibels(LoudnessMath.gainDb(-16f, measured.rmsDb))) // louder than target -> attenuate
-            assertTrue(LoudnessMath.attenuation(LoudnessMath.gainDb(-16f, measured.rmsDb)) < 1f)
+            // 9000/32768 sine: about -11.2 dBFS peak, so the gated loudness sits near -14 LUFS
+            // once the K-weighting and the -0.691 offset of BS.1770 are applied.
+            assertEquals(-14.6f, measured.lufs, 1.5f)
+            assertTrue(measured.lufs > LoudnessMath.SILENCE_DB)
+            assertTrue(measured.peakDb > -13f && measured.peakDb < -10f)
+            assertEquals(0, LoudnessMath.boostMillibels(LoudnessMath.gainDb(-16f, measured.lufs))) // louder than target -> attenuate
+            assertTrue(LoudnessMath.attenuation(LoudnessMath.gainDb(-16f, measured.lufs)) < 1f)
         } finally { file.delete() }
     }
 
@@ -130,14 +132,17 @@ class PlaybackRegressionTests {
         raw.execSQL("DROP TABLE room_master_table")
         raw.version = 2; raw.close()
         val upgraded = Room.databaseBuilder(app, LibraryDatabase::class.java, name)
-            .addMigrations(LibraryDatabase.MIGRATION_1_2, LibraryDatabase.MIGRATION_2_3).build()
+            .addMigrations(LibraryDatabase.MIGRATION_1_2, LibraryDatabase.MIGRATION_2_3, LibraryDatabase.MIGRATION_3_4).build()
         try {
             val track = upgraded.library().track("kept")!!
             assertNull(track.loudnessDb)
             assertEquals(200000L, track.playbackEndMs)
             assertEquals(10, track.crossfadeSeconds)
-            upgraded.library().loudness("kept", -21.5f)
+            upgraded.library().loudness("kept", -21.5f, -1.5f)
             assertEquals(-21.5f, upgraded.library().track("kept")!!.loudnessDb!!, 0.01f)
+            assertEquals(-1.5f, upgraded.library().track("kept")!!.peakDb!!, 0.01f)
+            assertEquals(0, upgraded.library().track("kept")!!.trackNumber)
+            assertEquals(0, upgraded.library().track("kept")!!.discNumber)
         } finally { upgraded.close(); app.deleteDatabase(name) }
     }
 
@@ -157,7 +162,7 @@ class PlaybackRegressionTests {
         raw.version = 1; raw.close()
         // The app registers every step (1->2->3); a real update from the oldest schema needs them all.
         val upgraded = Room.databaseBuilder(app, LibraryDatabase::class.java, name)
-            .addMigrations(LibraryDatabase.MIGRATION_1_2, LibraryDatabase.MIGRATION_2_3).build()
+            .addMigrations(LibraryDatabase.MIGRATION_1_2, LibraryDatabase.MIGRATION_2_3, LibraryDatabase.MIGRATION_3_4).build()
         try {
             assertTrue(upgraded.library().track("kept")!!.favorite)
             assertEquals(11000L, upgraded.library().track("kept")!!.manualOffsetMs)
