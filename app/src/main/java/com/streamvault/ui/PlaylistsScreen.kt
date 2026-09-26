@@ -56,7 +56,6 @@ fun PlaylistsScreen(vm: LibraryViewModel, menu: (Track) -> Unit, library: () -> 
             }
             else {
                 Cover(selected.id, selected.name, selected.cover, Modifier.size(156.dp).clickable { cover.launch(arrayOf("image/*")) })
-                KindBadge(selected.kind)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     Button(onClick = { tracks.firstOrNull()?.let { vm.play(it, tracks) } }, enabled = tracks.isNotEmpty()) { Icon(Icons.Rounded.PlayArrow, null); Text("Escuchar") }
                     ActionIcon(Icons.Rounded.Add, "Agregar canciones", { add = true })
@@ -65,6 +64,7 @@ fun PlaylistsScreen(vm: LibraryViewModel, menu: (Track) -> Unit, library: () -> 
                     ActionIcon(Icons.Rounded.DeleteOutline, "Eliminar playlist", { delete = true })
                 }
                 Text("${tracks.size} canciones · ${time(tracks.sumOf { it.durationMs })}", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                KindBadge(selected.kind)
                 if (tracks.isEmpty()) EmptyState("Dale vida a esta playlist", "Agrega canciones desde tu biblioteca. Usa las flechas para cambiar el orden.", action = "Agregar canciones", onAction = { add = true })
             }
         }
