@@ -14,5 +14,6 @@ class StreamVaultApp : Application() {
             .build()
         telegramClient = com.streamvault.data.cloud.TelegramClient(this)
         telegramClient.start()
+        com.streamvault.network.NetworkMonitor.start(this)
     }
 }

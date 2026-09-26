@@ -35,10 +35,34 @@ class SettingsActivity : AppCompatActivity() {
         setContentView(R.layout.activity_settings)
         findViewById<View>(R.id.btnBackSettings).setOnClickListener { finish() }
 
-        // Bloqueador
+        // Bloqueador + estadísticas
         val swAds = findViewById<Switch>(R.id.swAdBlocker)
         swAds.isChecked = AdBlocker.isEnabled(this)
         swAds.setOnCheckedChangeListener { _, checked -> AdBlocker.setEnabled(this, checked) }
+
+        val swTrack = findViewById<Switch>(R.id.swTrackers)
+        swTrack.isChecked = AdBlocker.trackersEnabled(this)
+        swTrack.setOnCheckedChangeListener { _, checked -> AdBlocker.setTrackersEnabled(this, checked) }
+
+        val (adsBlocked, trackersBlocked) = AdBlocker.getStats(this)
+        findViewById<TextView>(R.id.tvAdStats).text =
+            "Anuncios bloqueados: $adsBlocked  ·  Rastreadores bloqueados: $trackersBlocked"
+
+        // Calidad de streaming
+        val spQuality = findViewById<Spinner>(R.id.spQuality)
+        val qualityOptions = listOf("Automática", "Baja", "Normal", "Alta")
+        spQuality.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, qualityOptions)
+        spQuality.setSelection(prefs.getInt("stream_quality", 0).coerceIn(0, 3))
+        spQuality.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(p: AdapterView<*>?, v: View?, pos: Int, id: Long) {
+                prefs.edit().putInt("stream_quality", pos).apply()
+            }
+            override fun onNothingSelected(p: AdapterView<*>?) {}
+        }
+
+        val swWifi = findViewById<Switch>(R.id.swOnlyWifi)
+        swWifi.isChecked = prefs.getBoolean("only_wifi", false)
+        swWifi.setOnCheckedChangeListener { _, checked -> prefs.edit().putBoolean("only_wifi", checked).apply() }
 
         // Normalización
         val swNorm = findViewById<Switch>(R.id.swNormalization)

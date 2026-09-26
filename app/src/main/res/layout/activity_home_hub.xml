@@ -28,13 +28,27 @@
                 android:textSize="26sp"
                 android:textStyle="bold" />
 
-            <TextView
+            <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="¿Qué quieres escuchar?"
-                android:textColor="@color/den_text_dim"
-                android:textSize="15sp"
-                android:layout_marginBottom="18dp" />
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="18dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="¿Qué quieres escuchar?"
+                    android:textColor="@color/den_text_dim"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:id="@+id/tvNetStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:textSize="12sp" />
+            </LinearLayout>
 
             <!-- Buscador -->
             <TextView

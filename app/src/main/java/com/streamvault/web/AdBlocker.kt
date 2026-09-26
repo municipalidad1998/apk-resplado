@@ -15,8 +15,18 @@ object AdBlocker {
 
     private const val PREFS = "adblocker_prefs"
     private const val KEY_ENABLED = "enabled"
+    private const val KEY_TRACKERS = "block_trackers"
     private const val KEY_EXCEPTIONS = "exceptions"
     private const val KEY_CUSTOM = "custom_domains"
+    private const val KEY_ADS_BLOCKED = "ads_blocked"
+    private const val KEY_TRACKERS_BLOCKED = "trackers_blocked"
+
+    /** Dominios de rastreo (se cuentan aparte en las estadísticas). */
+    private val trackerDomains = setOf(
+        "analytics.google.com", "google-analytics.com", "scorecardresearch.com",
+        "quantserve.com", "doubleverify.com", "moatads.com",
+        "telemetry.microsoft.com", "browser-intake-datadoghq.com"
+    )
 
     /** Dominios publicitarios/tracker conocidos (lista base). */
     private val baseBlockedDomains = setOf(
@@ -56,6 +66,24 @@ object AdBlocker {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .getStringSet(KEY_CUSTOM, emptySet()) ?: emptySet()
 
+    fun trackersEnabled(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_TRACKERS, true)
+
+    fun setTrackersEnabled(context: Context, enabled: Boolean) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_TRACKERS, enabled).apply()
+    }
+
+    /** 📊 Estadísticas del bloqueador (anuncios / rastreadores). */
+    fun getStats(context: Context): Pair<Int, Int> {
+        val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        return p.getInt(KEY_ADS_BLOCKED, 0) to p.getInt(KEY_TRACKERS_BLOCKED, 0)
+    }
+
+    private fun count(context: Context, key: String) {
+        val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        p.edit().putInt(key, p.getInt(key, 0) + 1).apply()
+    }
+
     /** Sustituye la lista con una versión actualizada (p. ej. descargada). */
     fun updateBlockedList(context: Context, domains: Set<String>) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
@@ -66,7 +94,13 @@ object AdBlocker {
         if (!isEnabled(context) || url.isNullOrBlank()) return false
         val host = try { Uri.parse(url).host?.lowercase() ?: return false } catch (e: Exception) { return false }
         if (getExceptions(context).any { host == it || host.endsWith(".$it") }) return false
+        val isTracker = trackerDomains.any { host == it || host.endsWith(".$it") }
+        if (isTracker) {
+            if (trackersEnabled(context)) { count(context, KEY_TRACKERS_BLOCKED); return true }
+        }
         val blocked = baseBlockedDomains + getCustomBlocked(context)
-        return blocked.any { host == it || host.endsWith(".$it") }
+        val hit = blocked.any { host == it || host.endsWith(".$it") }
+        if (hit && !isTracker) count(context, KEY_ADS_BLOCKED)
+        return hit
     }
 }

@@ -62,6 +62,18 @@ class HomeHubActivity : AppCompatActivity() {
         setupHomeContent()
         setupBottomNav()
         setupMiniPlayer()
+
+        // Indicador de red 🟢🟡🔴
+        lifecycleScope.launch {
+            com.streamvault.network.NetworkMonitor.status.collectLatest { st ->
+                findViewById<TextView>(R.id.tvNetStatus).text = when (st) {
+                    com.streamvault.network.NetworkMonitor.Status.WIFI -> "🟢 Wi-Fi"
+                    com.streamvault.network.NetworkMonitor.Status.ONLINE -> "🟢 En línea"
+                    com.streamvault.network.NetworkMonitor.Status.SLOW -> "🟡 Conexión lenta"
+                    com.streamvault.network.NetworkMonitor.Status.OFFLINE -> "🔴 Sin conexión"
+                }
+            }
+        }
     }
 
     private fun setupHomeContent() {
