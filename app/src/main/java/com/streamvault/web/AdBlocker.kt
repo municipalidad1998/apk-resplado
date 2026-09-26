@@ -40,6 +40,8 @@ object AdBlocker {
         "tracking.twitter.com", "moatads.com", "doubleverify.com",
         "amazon-adsystem.com", "adsystem.amazon.com",
         "pubmatic.com", "rubiconproject.com", "openx.net",
+        "youtube.com/api/ads", "youtube.com/pagead", "googleads.g.doubleclick.net",
+        "adservice.google.com", "googlesyndication.com", "pagead2.googlesyndication.com",
         "sharethrough.com", "zedo.com", "adform.net",
         "smartadserver.com", "yieldmo.com", "spotxchange.com",
         "telemetry.microsoft.com", "browser-intake-datadoghq.com"

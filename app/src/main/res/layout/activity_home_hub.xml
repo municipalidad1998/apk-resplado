@@ -177,6 +177,6 @@
         <TextView android:id="@+id/tabSearch" android:text="🔎&#10;Buscar" style="@style/BottomTab" />
         <TextView android:id="@+id/tabLibrary" android:text="📚&#10;Biblioteca" style="@style/BottomTab" />
         <TextView android:id="@+id/tabPlaylists" android:text="🎵&#10;Playlists" style="@style/BottomTab" />
-        <TextView android:id="@+id/tabYouTube" android:text="▶&#10;YouTube" style="@style/BottomTab" />
+        <TextView android:id="@+id/tabYouTube" android:text="▶&#10;YouTube" style="@style/BottomTab" android:visibility="gone" />
     </LinearLayout>
 </LinearLayout>
