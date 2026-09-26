@@ -95,12 +95,13 @@ fun SearchScreen(vm: LibraryViewModel, menu: (Track) -> Unit) {
 
         picker?.let { hit -> PlaylistChooser(vm, hit) { picker = null } }
         when {
-            outcome.query.trim().length < 2 -> Suggestions(suggestions) { text = it }
+            outcome.query.trim().length < 2 -> Suggestions(suggestions, Modifier.weight(1f)) { text = it }
             tab == SearchTab.PHONE -> SourceList(
                 title = "MÚSICA DEL TELÉFONO", subtitle = "Archivos que existen en este dispositivo",
                 hits = outcome.local, empty = "No hay coincidencias en tu teléfono",
                 emptyHint = "Revisa el artista o el título. Si el archivo no tiene metadatos, edítalo desde la canción.",
-                vm = vm, menu = menu, currentId = current?.id
+                vm = vm, menu = menu, currentId = current?.id, modifier = Modifier.weight(1f),
+                choosePlaylist = { picker = it }
             )
             tab == SearchTab.ONLINE -> {
                 if (!net.online) OfflineNotice()
@@ -109,7 +110,8 @@ fun SearchScreen(vm: LibraryViewModel, menu: (Track) -> Unit) {
                     title = "MÚSICA ONLINE", subtitle = "Resultados obtenidos por Internet",
                     hits = outcome.online, empty = if (net.online) "Sin resultados en Internet" else "Sin conexión a Internet",
                     emptyHint = "El catálogo libre no incluye éxitos de grandes sellos; ninguna API gratuita y legal los ofrece.",
-                    vm = vm, menu = menu, currentId = current?.id
+                    vm = vm, menu = menu, currentId = current?.id, modifier = Modifier.weight(1f),
+                    choosePlaylist = { picker = it }
                 )
             }
             else -> Column(Modifier.weight(1f)) {
@@ -171,12 +173,13 @@ private fun OfflineNotice() {
 
 @Composable
 private fun SourceList(title: String, subtitle: String, hits: List<SearchHit>, empty: String, emptyHint: String,
-                       vm: LibraryViewModel, menu: (Track) -> Unit, currentId: String?) {
+                       vm: LibraryViewModel, menu: (Track) -> Unit, currentId: String?,
+                       modifier: Modifier = Modifier, choosePlaylist: (SearchHit) -> Unit = {}) {
     if (hits.isEmpty()) {
-        LazyColumn(Modifier.weight(1f)) { item { EmptyState(empty, emptyHint, Icons.Rounded.SearchOff) } }
+        LazyColumn(modifier) { item { EmptyState(empty, emptyHint, Icons.Rounded.SearchOff) } }
         return
     }
-    Column(Modifier.weight(1f)) {
+    Column(modifier) {
         SourceHeader(title, subtitle, hits.size)
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
             items(hits, key = { "${title}-${it.key}" }) { hit ->
@@ -185,7 +188,7 @@ private fun SourceList(title: String, subtitle: String, hits: List<SearchHit>, e
                         TrackRow(track, currentId == track.id, { vm.play(track, hits.mapNotNull { it.track }) }, { menu(track) },
                             trailing = { SourceBadge(MusicSource.LOCAL, hit.origin) })
                     }
-                    MusicSource.ONLINE -> OnlineRow(vm, hit) { picker = it }
+                    MusicSource.ONLINE -> OnlineRow(vm, hit, choosePlaylist)
                 }
             }
         }
@@ -194,8 +197,8 @@ private fun SourceList(title: String, subtitle: String, hits: List<SearchHit>, e
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun Suggestions(suggestions: List<String>, pick: (String) -> Unit) {
-    LazyColumn(Modifier.weight(1f)) {
+private fun Suggestions(suggestions: List<String>, modifier: Modifier = Modifier, pick: (String) -> Unit) {
+    LazyColumn(modifier) {
         item {
             Text("Prueba con", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp, bottom = 8.dp))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
