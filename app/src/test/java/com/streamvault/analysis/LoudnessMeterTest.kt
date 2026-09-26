@@ -81,8 +81,12 @@ class LoudnessMeterTest {
             for (frame in 0 until frames) output[frame] = (amplitude * sin(2 * Math.PI * frequency * frame / rate)).toFloat()
             return output
         }
-        // 0.5 amplitude is -9.03 dBFS: 1 kHz reads -9.02 LUFS and 40 Hz about -14.6 LUFS.
-        assertEquals(-9.02f, measure(tone(1000, 0.5f, 48000), channels = 1).lufs, 0.2f)
-        assertEquals(-14.6f, measure(tone(40, 0.5f, 48000), channels = 1).lufs, 0.4f)
+        // 0.5 amplitude is -9.03 dBFS. The curve is +0.70 dB at 1 kHz and -5.57 dB at 40 Hz,
+        // so the two tones must be 6.27 dB apart: -9.02 LUFS and -15.29 LUFS.
+        val oneK = measure(tone(1000, 0.5f, 48000), channels = 1).lufs
+        val forty = measure(tone(40, 0.5f, 48000), channels = 1).lufs
+        assertEquals(-9.02f, oneK, 0.2f)
+        assertEquals(-15.29f, forty, 0.3f)
+        assertEquals(6.27f, oneK - forty, 0.2f)
     }
 }
