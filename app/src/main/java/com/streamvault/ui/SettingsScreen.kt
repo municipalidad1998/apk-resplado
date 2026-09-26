@@ -163,7 +163,7 @@ fun SettingsScreen(vm: LibraryViewModel, permission: () -> Unit, folder: () -> U
     if (numeric.isNotEmpty()) {
         val isLoudness = numeric == "Loudness objetivo"
         var value by remember(numeric) {
-            mutableStateOf((if (isLoudness) vm.settings.value.targetLoudnessDb else vm.settings.value.crossfade).toString())
+            mutableStateOf((if (isLoudness) settings.targetLoudnessDb else settings.crossfade).toString())
         }
         AlertDialog(onDismissRequest = { numeric = "" }, title = { Text(if (isLoudness) "Loudness personalizado" else "Crossfade personalizado") }, text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -172,7 +172,7 @@ fun SettingsScreen(vm: LibraryViewModel, permission: () -> Unit, folder: () -> U
                     fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 OutlinedTextField(value, { value = it }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     label = { Text(if (isLoudness) "LUFS (negativo)" else "Segundos") })
-                Text(if (isLoudness) "Valor actual: ${vm.settings.value.targetLoudnessDb} LUFS" else "Valor actual: ${vm.settings.value.crossfade} s", fontSize = 11.sp)
+                Text(if (isLoudness) "Valor actual: ${settings.targetLoudnessDb} LUFS" else "Valor actual: ${settings.crossfade} s", fontSize = 11.sp)
             }
         }, confirmButton = { TextButton(onClick = {
             if (isLoudness) update { it.copy(targetLoudnessDb = value.toIntOrNull()?.coerceIn(-24, -6) ?: it.targetLoudnessDb) }
