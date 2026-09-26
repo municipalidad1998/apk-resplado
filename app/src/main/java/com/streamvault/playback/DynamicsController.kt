@@ -28,7 +28,8 @@ class DynamicsController {
             return
         }
         runCatching {
-            val effect = DynamicsProcessing(0, sessionId, buildConfig(preset, postGainDb))
+            val effect = DynamicsProcessing(0, sessionId, buildConfig())
+            configure(effect, preset, postGainDb)
             effect.enabled = true
             effects[sessionId] = effect
         }.onFailure { Log.w("Dynamics", "No se pudo aplicar el compresor: ${it.message}") }
@@ -54,16 +55,11 @@ class DynamicsController {
         }
     }
 
-    private fun buildConfig(preset: CompressorPreset, postGainDb: Float): DynamicsProcessing.Config {
-        // One band covering the whole spectrum: a single broadband compressor, like Audacity's.
-        return DynamicsProcessing.Config.Builder(
-            DynamicsProcessing.VARIANT_FAVOR_FREQUENCY_RESOLUTION,
-            2, false, 0, true, 1, false, 0, true
-        )
-            .setMbcBandAllChannelsTo(0, band(preset, postGainDb))
-            .setLimiterAllChannelsTo(limiter())
-            .build()
-    }
+    /** Skeleton: two channels, one broadband compressor band each and the limiter switched on. */
+    private fun buildConfig(): DynamicsProcessing.Config = DynamicsProcessing.Config.Builder(
+        DynamicsProcessing.VARIANT_FAVOR_FREQUENCY_RESOLUTION,
+        2, false, 0, true, 1, false, 0, true
+    ).build()
 
     private fun band(preset: CompressorPreset, postGainDb: Float) = DynamicsProcessing.MbcBand(
         true,

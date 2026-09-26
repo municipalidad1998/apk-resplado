@@ -103,8 +103,8 @@ fun SettingsScreen(vm: LibraryViewModel, permission: () -> Unit, folder: () -> U
             })
             UpdateSection(vm)
             SectionTitle("Respaldo")
-            Setting("Guardar mis ajustes", "Exporta la configuración a un archivo que puedes conservar", backup)
-            Setting("Restaurar mis ajustes", "Recupera la configuración desde un respaldo anterior", restore)
+            Setting("Guardar mis ajustes", "Exporta la configuración a un archivo que puedes conservar", { backup.launch("ajustes-reproductor-denilson.json") })
+            Setting("Restaurar mis ajustes", "Recupera la configuración desde un respaldo anterior", { restore.launch(arrayOf("application/json", "text/*")) })
             Text("La biblioteca, las colas y los ajustes se conservan al actualizar. Si alguna vez tienes que desinstalar, este respaldo te devuelve la configuración; "
                 + "Android también puede restaurar la base de datos automáticamente al reinstalar con la misma cuenta.",
                 fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 6.dp))
