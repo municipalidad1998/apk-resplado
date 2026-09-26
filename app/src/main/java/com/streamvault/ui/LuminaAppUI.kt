@@ -35,7 +35,7 @@ fun LuminaAppUI(vm: LibraryViewModel, requestPermission: () -> Unit, chooseFolde
     // An automatic check never interrupts playback: it only tells you the new version exists.
     LaunchedEffect(update) { if (update is UpdateState.Available && !fullPlayer && menuTrack == null) snackbar.showSnackbar("Nueva versión ${(update as UpdateState.Available).info.version}: abre Ajustes → Actualizaciones") }
     fun library(filter: LibraryFilter = LibraryFilter()) { vm.filter.value = filter; vm.query.value = ""; page = 1 }
-    val labels = listOf("Inicio", "Explorar", "Biblioteca", "Playlists", "Ajustes")
+    val labels = listOf("Inicio", "Buscar", "Biblioteca", "Playlists", "Ajustes")
     val icons = listOf(Icons.Rounded.Home, Icons.Rounded.TravelExplore, Icons.Rounded.LibraryMusic, Icons.Rounded.QueueMusic, Icons.Rounded.Tune)
     LuminaTheme(settings.theme, settings.dynamicColor) {
         Surface(Modifier.fillMaxSize()) {
