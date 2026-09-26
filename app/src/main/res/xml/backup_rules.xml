@@ -6,6 +6,4 @@
     <include domain="database" path="lumina-library.db-shm" />
     <include domain="sharedpref" path="lumina.xml" />
     <include domain="file" path="covers/" />
-    <exclude domain="file" path="exports/" />
-    <exclude domain="cache" path="." />
 </full-backup-content>
