@@ -1,6 +1,7 @@
 package com.streamvault.ui.music
 
 import android.content.ComponentName
+import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -25,6 +26,8 @@ import com.streamvault.data.db.MusicFavoriteEntity
 import com.streamvault.data.db.PlayHistoryEntity
 import com.streamvault.data.local.LocalSong
 import com.streamvault.playback.MusicPlayerService
+import com.streamvault.playback.PlaybackStateHolder
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 /**
@@ -77,8 +80,13 @@ class PlayerMusicActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_player_music)
 
-        queue = intent.getParcelableArrayListExtra<LocalSong>(EXTRA_QUEUE) ?: emptyList()
-        startIndex = intent.getIntExtra(EXTRA_INDEX, 0)
+        queue = intent.getParcelableArrayListExtra<LocalSong>(EXTRA_QUEUE)
+            ?: PlaybackStateHolder.queue
+        startIndex = intent.getIntExtra(EXTRA_INDEX, PlaybackStateHolder.index)
+        if (queue.isNotEmpty()) {
+            PlaybackStateHolder.queue = queue
+            PlaybackStateHolder.index = startIndex
+        }
 
         ivCover = findViewById(R.id.ivCover)
         tvTitle = findViewById(R.id.tvNowTitle)
@@ -111,6 +119,19 @@ class PlayerMusicActivity : AppCompatActivity() {
                     btnFav.alpha = 1f
                 }
             }
+        }
+
+        findViewById<View>(R.id.btnAddToPlaylist).setOnClickListener { showAddToPlaylist() }
+        findViewById<View>(R.id.btnEqualizer).setOnClickListener {
+            val sessionId = controller?.let { c ->
+                try {
+                    (c as? androidx.media3.exoplayer.ExoPlayer)?.audioSessionId ?: 0
+                } catch (e: Exception) { 0 }
+            } ?: 0
+            startActivity(
+                Intent(this, com.streamvault.ui.settings.EqualizerActivity::class.java)
+                    .putExtra(com.streamvault.ui.settings.EqualizerActivity.EXTRA_SESSION_ID, sessionId)
+            )
         }
 
         findViewById<ImageButton>(R.id.btnNext).setOnClickListener { controller?.seekToNextMediaItem() }
@@ -170,21 +191,69 @@ class PlayerMusicActivity : AppCompatActivity() {
                 .build()
         }
         controller?.apply {
-            setMediaItems(items, startIndex.coerceIn(0, items.lastIndex), 0L)
-            prepare()
-            play()
+            // Solo reinicia la cola si es otra pista (vuelve del mini reproductor sin cortar)
+            val current = currentMediaItem?.mediaId
+            if (current != items[startIndex.coerceIn(0, items.lastIndex)].mediaId ||
+                mediaItemCount != items.size
+            ) {
+                setMediaItems(items, startIndex.coerceIn(0, items.lastIndex), 0L)
+                prepare()
+                play()
+            }
         }
-        updateSongUI(queue.getOrNull(startIndex))
+        val idx = controller?.currentMediaItemIndex ?: startIndex
+        updateSongUI(queue.getOrNull(idx))
     }
 
     private val playerListener = object : Player.Listener {
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             val idx = controller?.currentMediaItemIndex ?: return
+            PlaybackStateHolder.index = idx
             updateSongUI(queue.getOrNull(idx))
         }
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             updatePlayButton(isPlaying)
+        }
+    }
+
+    private fun showAddToPlaylist() {
+        val idx = controller?.currentMediaItemIndex ?: return
+        val s = queue.getOrNull(idx) ?: return
+        val dao = StreamVaultApp.db.playlistDao()
+        lifecycleScope.launch {
+            dao.all().collectLatest { all ->
+                val locals = all.filter { it.source == "LOCAL" }
+                if (locals.isEmpty()) {
+                    android.widget.Toast.makeText(
+                        this@PlayerMusicActivity,
+                        "Crea primero una playlist local en 🎶 Playlists",
+                        android.widget.Toast.LENGTH_LONG
+                    ).show()
+                    return@collectLatest
+                }
+                val names = locals.map { it.name }.toTypedArray()
+                androidx.appcompat.app.AlertDialog.Builder(this@PlayerMusicActivity)
+                    .setTitle("Agregar \"${s.title}\" a…")
+                    .setItems(names) { _, which ->
+                        lifecycleScope.launch {
+                            dao.insertTrack(
+                                com.streamvault.data.db.PlaylistTrackEntity(
+                                    playlistId = locals[which].id,
+                                    title = s.title, artist = s.artist, uri = s.contentUri,
+                                    artUri = s.albumArtUri, duration = s.duration
+                                )
+                            )
+                            android.widget.Toast.makeText(
+                                this@PlayerMusicActivity,
+                                "Agregada a ${locals[which].name}", android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    }
+                    .setNegativeButton("Cancelar", null)
+                    .show()
+                return@collectLatest
+            }
         }
     }
 

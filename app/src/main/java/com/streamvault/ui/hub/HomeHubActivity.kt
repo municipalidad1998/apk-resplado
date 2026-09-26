@@ -11,6 +11,17 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.streamvault.R
 import com.streamvault.ui.home.MainActivity
+import android.content.ComponentName
+import android.widget.ImageButton
+import android.widget.ImageView
+import com.bumptech.glide.Glide
+import androidx.media3.common.Player
+import androidx.media3.session.MediaController
+import androidx.media3.session.SessionToken
+import com.google.common.util.concurrent.ListenableFuture
+import com.google.common.util.concurrent.MoreExecutors
+import com.streamvault.playback.MusicPlayerService
+import com.streamvault.playback.PlaybackStateHolder
 import com.streamvault.ui.music.LocalMusicActivity
 import com.streamvault.ui.settings.SettingsActivity
 import com.streamvault.ui.telegram.TelegramConfigActivity
@@ -88,6 +99,68 @@ class HomeHubActivity : AppCompatActivity() {
         val rv = findViewById<RecyclerView>(R.id.rvHub)
         rv.layoutManager = GridLayoutManager(this, 2)
         rv.adapter = HubAdapter(items)
+
+        setupMiniPlayer()
+    }
+
+    // ---------------- 🎵 Mini reproductor ----------------
+
+    private var controllerFuture: ListenableFuture<MediaController>? = null
+    private var controller: MediaController? = null
+
+    private fun setupMiniPlayer() {
+        val mini = findViewById<View>(R.id.miniPlayer)
+        val btnPlay = findViewById<ImageButton>(R.id.btnMiniPlay)
+        mini.setOnClickListener {
+            startActivity(Intent(this, com.streamvault.ui.music.PlayerMusicActivity::class.java))
+        }
+        btnPlay.setOnClickListener {
+            controller?.let { if (it.isPlaying) it.pause() else it.play() }
+        }
+    }
+
+    private val miniListener = object : Player.Listener {
+        override fun onIsPlayingChanged(playing: Boolean) {
+            findViewById<ImageButton>(R.id.btnMiniPlay).setImageResource(
+                if (playing) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play
+            )
+        }
+        override fun onMediaItemTransition(item: androidx.media3.common.MediaItem?, reason: Int) {
+            refreshMini()
+        }
+    }
+
+    private fun refreshMini() {
+        val c = controller ?: return
+        val has = c.mediaItemCount > 0
+        val s = PlaybackStateHolder.queue.getOrNull(c.currentMediaItemIndex)
+        findViewById<View>(R.id.miniPlayer).visibility = if (has && s != null) View.VISIBLE else View.GONE
+        s ?: return
+        findViewById<TextView>(R.id.tvMiniTitle).text = s.title
+        findViewById<TextView>(R.id.tvMiniArtist).text = s.artist
+        Glide.with(this).load(s.albumArtUri)
+            .placeholder(R.drawable.ic_channel).error(R.drawable.ic_channel)
+            .into(findViewById(R.id.ivMiniArt))
+        miniListener.onIsPlayingChanged(c.isPlaying)
+    }
+
+    override fun onStart() {
+        super.onStart()
+        val token = SessionToken(this, ComponentName(this, MusicPlayerService::class.java))
+        controllerFuture = MediaController.Builder(this, token).buildAsync()
+        controllerFuture?.addListener({
+            controller = controllerFuture?.get()
+            controller?.addListener(miniListener)
+            refreshMini()
+        }, MoreExecutors.directExecutor())
+    }
+
+    override fun onStop() {
+        controller?.removeListener(miniListener)
+        controllerFuture?.let { MediaController.releaseFuture(it) }
+        controllerFuture = null
+        controller = null
+        super.onStop()
     }
 
     class HubAdapter(private val items: List<HubItem>) : RecyclerView.Adapter<HubAdapter.VH>() {

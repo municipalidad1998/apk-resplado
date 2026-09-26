@@ -14,6 +14,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -172,8 +173,43 @@ class LocalMusicActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.tvEmptyMusic).visibility = if (list.isEmpty()) View.VISIBLE else View.GONE
         if (list.isEmpty() && allSongs.isNotEmpty())
             findViewById<TextView>(R.id.tvEmptyMusic).text = "Sin resultados en tu biblioteca local."
-        adapter = SongAdapter(list) { pos, songs -> openPlayer(songs, pos) }
+        adapter = SongAdapter(list,
+            onClick = { pos, songs -> openPlayer(songs, pos) },
+            onLongClick = { song -> showMetadataEditor(song) })
         findViewById<RecyclerView>(R.id.rvSongs).adapter = adapter
+    }
+
+    /** Edición de metadatos cuando el archivo los tiene incompletos. */
+    private fun showMetadataEditor(song: LocalSong) {
+        val view = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(48, 24, 48, 0)
+        }
+        val etTitle = EditText(this).apply { setText(song.title); hint = "Título" }
+        val etArtist = EditText(this).apply { setText(song.artist); hint = "Artista" }
+        val etAlbum = EditText(this).apply { setText(song.album); hint = "Álbum" }
+        view.addView(etTitle); view.addView(etArtist); view.addView(etAlbum)
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("✏️ Editar metadatos")
+            .setView(view)
+            .setPositiveButton("Guardar") { _, _ ->
+                try {
+                    val values = android.content.ContentValues().apply {
+                        put(MediaStore.Audio.Media.TITLE, etTitle.text.toString())
+                        put(MediaStore.Audio.Media.ARTIST, etArtist.text.toString())
+                        put(MediaStore.Audio.Media.ALBUM, etAlbum.text.toString())
+                    }
+                    val rows = contentResolver.update(Uri.parse(song.contentUri), values, null, null)
+                    Toast.makeText(this,
+                        if (rows > 0) "Metadatos actualizados" else "No se pudo escribir en el archivo",
+                        Toast.LENGTH_SHORT).show()
+                    if (rows > 0) loadSongs()
+                } catch (e: Exception) {
+                    Toast.makeText(this, "Android requiere confirmar el permiso de escritura para este archivo", Toast.LENGTH_LONG).show()
+                }
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
     }
 
     private fun openPlayer(songs: List<LocalSong>, pos: Int) {
@@ -228,8 +264,11 @@ class LocalMusicActivity : AppCompatActivity() {
 
     // ---------------- Adapters ----------------
 
-    class SongAdapter(val songs: List<LocalSong>, val onClick: (Int, List<LocalSong>) -> Unit) :
-        RecyclerView.Adapter<SongAdapter.VH>() {
+    class SongAdapter(
+        val songs: List<LocalSong>,
+        val onClick: (Int, List<LocalSong>) -> Unit,
+        val onLongClick: (LocalSong) -> Unit = {}
+    ) : RecyclerView.Adapter<SongAdapter.VH>() {
         class VH(v: View) : RecyclerView.ViewHolder(v) {
             val art: ImageView = v.findViewById(R.id.ivSongArt)
             val title: TextView = v.findViewById(R.id.tvSongTitle)
@@ -252,6 +291,10 @@ class LocalMusicActivity : AppCompatActivity() {
                 .placeholder(R.drawable.ic_channel)
                 .error(R.drawable.ic_channel).into(h.art)
             h.itemView.setOnClickListener { onClick(h.bindingAdapterPosition, songs) }
+            h.itemView.setOnLongClickListener {
+                songs.getOrNull(h.bindingAdapterPosition)?.let(onLongClick)
+                true
+            }
         }
     }
 
