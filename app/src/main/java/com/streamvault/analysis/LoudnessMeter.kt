@@ -31,8 +31,8 @@ class LoudnessMeter(val sampleRate: Int, channelCount: Int) {
     private val blockSize = (sampleRate * 0.4).toInt().coerceAtLeast(4)
     private val hop = (blockSize / 4).coerceAtLeast(1)
     private val chains: Array<Array<Biquad>>
-    private val sums = DoubleArray(4)
-    private val counts = IntArray(4)
+    private val sums = DoubleArray(OVERLAP)
+    private val counts = IntArray(OVERLAP)
     private val powers = ArrayList<Double>()
     private val previous = DoubleArray(channels)
     private var blockIndex = 0
@@ -66,19 +66,21 @@ class LoudnessMeter(val sampleRate: Int, channelCount: Int) {
                 }
                 previous[channel] = value
                 val weighted = chains[channel][1].process(chains[channel][0].process(value.toFloat())).toDouble()
-                sums[blockIndex % 4] += weighted * weighted
+                val square = weighted * weighted
+                // With 75 % overlap every sample belongs to four consecutive blocks, so it feeds
+                // four rolling sums; each one is closed when its own 400 ms window is complete.
+                for (phase in 0 until OVERLAP) sums[(blockIndex - phase + OVERLAP) % OVERLAP] += square
             }
-            counts[blockIndex % 4]++
+            for (phase in 0 until OVERLAP) counts[phase]++
             framesInBlock++
             totalFrames++
             offset += channels
             if (framesInBlock == hop) {
                 framesInBlock = 0
-                // The accumulator that has just completed a full 400 ms window is the next slot.
-                val slot = (blockIndex + 1) % 4
-                val count = counts[slot]
-                if (count >= blockSize / 2) {
-                    powers += sums[slot] / count.toDouble()
+                val slot = (blockIndex + 1) % OVERLAP
+                if (counts[slot] >= blockSize) {
+                    // Mean square per channel, so mono and stereo of the same tone agree.
+                    powers += sums[slot] / (counts[slot].toDouble() * channels)
                     sums[slot] = 0.0
                     counts[slot] = 0
                 }
@@ -107,6 +109,7 @@ class LoudnessMeter(val sampleRate: Int, channelCount: Int) {
 
     private companion object {
         const val OVERSAMPLING = 4
+        const val OVERLAP = 4
         const val ABSOLUTE_GATE_LUFS = -70.0
         const val RELATIVE_GATE_LU = 10.0
         const val SILENT_LUFS = -70f

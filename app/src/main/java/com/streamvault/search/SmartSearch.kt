@@ -40,13 +40,10 @@ object SmartSearch {
     /** "Alex Campos - Tu Poeta" and "Tu poeta (de Alex Campos)" give the same two parts. */
     fun parse(query: String): Intent {
         val text = normalize(query)
-        val separators = Regex("\\s+(?:-|–|—|:|\\||de|del|by|feat|ft)\\s+|\\s+-\\s+")
-        var parts = text.split(separators).map { it.trim() }.filter { it.length > 1 }
-        if (parts.size == 1) {
-            // "tu poeta alex campos": no separator, so the strongest hint is the whole string.
-            parts = listOf(text)
-        }
-        return Intent(query, text, parts.take(2))
+        // Split on the raw query: normalize() would delete the very dashes that separate the fields.
+        val separators = Regex("\\s+(?:-|–|—|:|\\|)\\s+|\\s+(?:de|del|by|feat|ft)\\s+", RegexOption.IGNORE_CASE)
+        val parts = query.split(separators).map(::normalize).filter { it.length > 1 }
+        return Intent(query, text, (if (parts.isEmpty()) listOf(text) else parts).take(2))
     }
 
     /** How well one candidate answers the query. 0 means "not related at all". */
