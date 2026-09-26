@@ -76,12 +76,11 @@ object UpdateInstaller {
     }
 
     fun register(context: Context) {
-        val filter = IntentFilter(ACTION_RESULT)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            context.registerReceiver(InstallResultReceiver(), filter, Context.RECEIVER_NOT_EXPORTED)
-        } else {
-            context.registerReceiver(InstallResultReceiver(), filter)
-        }
+        // ContextCompat supplies RECEIVER_NOT_EXPORTED on Android 13+ and no flag below it.
+        androidx.core.content.ContextCompat.registerReceiver(
+            context, InstallResultReceiver(), IntentFilter(ACTION_RESULT),
+            androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED
+        )
     }
 
     const val ACTION_RESULT = "com.streamvault.INSTALL_RESULT"
