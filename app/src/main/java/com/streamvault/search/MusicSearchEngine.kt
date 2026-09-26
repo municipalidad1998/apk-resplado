@@ -30,8 +30,8 @@ data class SearchOutcome(
  * is only asked when there is a connection, and its failures never hide the local results.
  */
 class MusicSearchEngine(
-    private val local: LocalMusicProvider,
-    private val online: OnlineMusicProvider
+    private val local: MusicProvider,
+    private val online: MusicProvider
 ) {
 
     /** Only the phone. Used by the library screen, where online music must not appear. */

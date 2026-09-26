@@ -254,26 +254,6 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
         val cover = withContext(Dispatchers.IO) { app.artwork.import(track.id, uri) } ?: error("La imagen no es compatible")
         dao.track(track.id)?.let { dao.update(it.copy(cover = cover)) }
     }
-    /**
-     * The phone comes first, then the internet: the local library is searched and ranked
-     * immediately, and only afterwards the online provider is queried with the same rules.
-     */
-    fun searchOnline(query: String) {
-        val clean = query.trim()
-        if (clean.length < 2) return
-        viewModelScope.launch {
-            onlineSearching.value = true
-            onlineError.value = null
-            localResults.value = runCatching { searchLocal(clean) }.getOrDefault(emptyList())
-            runCatching { online.search(clean) }
-                .onSuccess { results ->
-                    onlineResults.value = rankOnline(results, clean)
-                    if (results.isEmpty() && localResults.value.isEmpty()) onlineError.value = "Sin resultados para \"$clean\". Prueba con el artista o con otra palabra."
-                }
-                .onFailure { onlineError.value = it.localizedMessage ?: "No se pudo buscar en Internet" }
-            onlineSearching.value = false
-        }
-    }
 
     private fun wantedQuality(): Quality = Quality.values().firstOrNull { it.key == settings.value.onlineQuality } ?: Quality.AUTO
 
