@@ -38,7 +38,16 @@ class NavigationTests {
         compose.waitUntil(15000) { compose.onAllNodesWithText("Lista de prueba de navegación").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("Lista de prueba de navegación").performClick()
         // The detail view replaces the list: wait for its own actions before asserting on it.
-        compose.waitUntil(15000) { compose.onAllNodesWithContentDescription("Eliminar playlist").fetchSemanticsNodes().isNotEmpty() }
+        val opened = runCatching {
+            compose.waitUntil(15000) { compose.onAllNodesWithContentDescription("Eliminar playlist").fetchSemanticsNodes().isNotEmpty() }
+        }.isSuccess
+        if (!opened) {
+            // Encode what is on screen into the failure message: it is the only output this job gives.
+            val texts = compose.onRoot().fetchSemanticsNodes()
+                .mapNotNull { node -> node.config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.Text)?.firstOrNull()?.toString() }
+                .distinct().take(40)
+            assertTrue("No se abrió la playlist. Textos en pantalla: $texts", false)
+        }
         compose.onNodeWithContentDescription("Eliminar playlist").assertIsDisplayed()
         compose.onNodeWithContentDescription("Eliminar playlist").performClick()
         compose.onNodeWithText("Eliminar").performClick()
